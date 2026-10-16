@@ -1,2 +1,8 @@
 .env
-
+paymentg-bsc
+paymentg-bsc.exe
+data/backup_old/
+data/*.db*
+data/qr/*.png
+data/sandbox/*.db*
+data/sandbox/qr/*.png

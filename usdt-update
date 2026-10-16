@@ -1,0 +1,58 @@
+#!/bin/bash
+set -e
+
+# ==========================================================
+# PaymentG USDT BEP-20 One-Click Update & Hot-Reload Script
+# ==========================================================
+
+APP_DIR="/home/ubuntu/usdt-payment"
+BINARY_NAME="paymentg-bsc"
+SERVICE_NAME="usdt-payment"
+
+echo "=========================================================="
+echo " [PaymentG Update] Memulai pembaruan otomatis sistem...    "
+echo "=========================================================="
+
+cd "$APP_DIR"
+
+echo "==> 1. Menjaga integritas data lokal (skip-worktree SQLite)..."
+git update-index --skip-worktree data/payment.db data/payment.db-shm data/payment.db-wal data/sandbox/payment.db data/sandbox/payment.db-shm data/sandbox/payment.db-wal 2>/dev/null || true
+
+echo "==> 2. Menarik pembaruan kode terbaru dari Git remote..."
+git fetch origin main
+git pull origin main
+
+echo "==> 3. Memverifikasi file environment (.env)..."
+if [ ! -f .env ]; then
+    echo "[ERROR] File .env tidak ditemukan di $APP_DIR!"
+    exit 1
+fi
+
+echo "==> 4. Mengompilasi ulang binary Go ($BINARY_NAME)..."
+CGO_ENABLED=0 go build -o "$BINARY_NAME" main.go
+echo "    [OK] Kompilasi berhasil!"
+
+echo "==> 5. Merestart service systemd ($SERVICE_NAME)..."
+sudo systemctl daemon-reload
+sudo systemctl restart "$SERVICE_NAME"
+
+echo "==> 6. Memeriksa status service..."
+sleep 2
+if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+    echo "    [OK] Service $SERVICE_NAME berhasil aktif (running)!"
+else
+    echo "[ERROR] Service gagal berjalan! Periksa log: journalctl -u $SERVICE_NAME -n 50"
+    exit 1
+fi
+
+echo "==> 7. Menguji respons Health Check lokal & Cloudflare..."
+PORT=$(grep -E '^PORT=' .env | cut -d '=' -f2 | tr -d ' ' || echo "3900")
+HEALTH_RESP=$(curl -s "http://127.0.0.1:${PORT}/api/health" || echo "Gagal menghubungi lokal port $PORT")
+echo "    Status API: $HEALTH_RESP"
+
+echo "=========================================================="
+echo " [SUKSES] Sistem PaymentG telah diperbarui & aktif!       "
+echo " Host Publik : https://usdt.syukurapi.online              "
+echo " Dashboard UI: https://usdt.syukurapi.online/dashboard/   "
+echo " Sandbox UI  : https://usdt.syukurapi.online/sandbox/     "
+echo "=========================================================="
