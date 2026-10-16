@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PaymentG — USDT BEP-20 Live Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0b0e11; color: #eaecef; }
+    .bg-card { background-color: #181a20; }
+    .bg-card-hover:hover { background-color: #2b313a; }
+    .border-bsc { border-color: #2b313a; }
+    .text-gold { color: #f0b90b; }
+    .bg-gold { background-color: #f0b90b; }
+    .bg-gold:hover { background-color: #d9a507; }
+    .text-muted { color: #848e9c; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+
+  <!-- PIN Modal -->
+  <div id="pinModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-card border border-bsc rounded-2xl w-full max-w-md p-6 shadow-2xl">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold text-xl">⚡</div>
+        <div>
+          <h2 class="text-xl font-bold text-white">PaymentG Security Guard</h2>
+          <p class="text-xs text-muted">Masukkan Admin PIN untuk mengakses dashboard live</p>
+        </div>
+      </div>
+      <form id="pinForm" onsubmit="handlePinLogin(event)">
+        <div class="mb-4">
+          <label class="block text-xs uppercase tracking-wider text-muted mb-2 font-semibold">Admin PIN</label>
+          <input type="password" id="pinInput" placeholder="Masukkan 4 digit PIN..." required autofocus
+                 class="w-full bg-[#0b0e11] border border-bsc rounded-xl px-4 py-3 text-white text-center text-2xl tracking-widest focus:outline-none focus:border-[#f0b90b]">
+        </div>
+        <div id="pinError" class="hidden mb-4 p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-sm text-center"></div>
+        <button type="submit" id="pinSubmitBtn" class="w-full bg-gold text-black font-bold py-3 px-4 rounded-xl transition duration-150">
+          Masuk ke Dashboard
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Resolve Unmatched Modal -->
+  <div id="resolveModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+    <div class="bg-card border border-bsc rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <span class="text-gold">🔗</span> Pasangkan Mutasi CEX ke Order
+        </h3>
+        <button onclick="closeResolveModal()" class="text-muted hover:text-white text-xl">&times;</button>
+      </div>
+      <p class="text-xs text-muted mb-4">
+        Gunakan fitur ini jika pembeli mengirim dana via CEX (Indodax, Tokocrypto, Bybit) namun nominalnya terpotong biaya penarikan exchange.
+      </p>
+      <form onsubmit="submitResolve(event)">
+        <div class="mb-3">
+          <label class="block text-xs text-muted mb-1">Tx ID / Mutasi</label>
+          <input type="text" id="resolveTxID" readonly class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-xs text-muted font-mono">
+        </div>
+        <div class="mb-4">
+          <label class="block text-xs text-muted mb-1 font-semibold text-white">Target Order ID</label>
+          <input type="text" id="resolveOrderID" placeholder="ord_xxxxxxxxxxxx" required
+                 class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-sm text-white font-mono focus:outline-none focus:border-[#f0b90b]">
+          <p class="text-[11px] text-muted mt-1">Order harus berstatus PENDING atau EXPIRED (belum PAID).</p>
+        </div>
+        <div class="flex justify-end space-x-3">
+          <button type="button" onclick="closeResolveModal()" class="px-4 py-2 rounded-lg border border-bsc text-sm text-muted hover:text-white">Batal</button>
+          <button type="submit" class="px-5 py-2 rounded-lg bg-gold text-black font-semibold text-sm hover:opacity-90">Pasangkan & Lunaskan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Navbar -->
+  <header class="bg-card border-b border-bsc sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-black">BSC</div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold text-white tracking-wide">PaymentG</h1>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold border border-gold/40 font-semibold">USDT BEP-20</span>
+          </div>
+          <p class="text-[11px] text-muted">Watch-Only Non-Custodial Gateway</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3 text-xs">
+        <div class="hidden md:flex items-center space-x-2 bg-[#0b0e11] border border-bsc px-3 py-1.5 rounded-lg">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="text-muted">Blok Terakhir:</span>
+          <span id="navBlock" class="text-white font-mono font-bold">-</span>
+        </div>
+        <div class="hidden lg:flex items-center space-x-2 bg-[#0b0e11] border border-bsc px-3 py-1.5 rounded-lg">
+          <span class="text-muted">RPC Aktif:</span>
+          <span id="navRPC" class="text-gold font-mono truncate max-w-[200px]">-</span>
+        </div>
+        <a href="/sandbox/" target="_blank" class="bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-600/30 font-semibold px-3 py-1.5 rounded-lg transition">
+          🚀 Buka Sandbox
+        </a>
+        <button onclick="logoutAdmin()" class="border border-bsc hover:border-red-500/50 text-muted hover:text-red-400 px-3 py-1.5 rounded-lg transition">
+          Keluar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div class="bg-card border border-bsc rounded-2xl p-4">
+        <p class="text-xs text-muted font-medium mb-1">Total Omset</p>
+        <h3 id="statVolume" class="text-xl md:text-2xl font-black text-white font-mono">0.00 <span class="text-xs font-normal text-gold">USDT</span></h3>
+      </div>
+      <div class="bg-card border border-bsc rounded-2xl p-4">
+        <p class="text-xs text-muted font-medium mb-1">Sudah Lunas</p>
+        <h3 id="statPaid" class="text-xl md:text-2xl font-black text-emerald-400 font-mono">0</h3>
+      </div>
+      <div class="bg-card border border-bsc rounded-2xl p-4">
+        <p class="text-xs text-muted font-medium mb-1">Menunggu Bayar</p>
+        <h3 id="statPending" class="text-xl md:text-2xl font-black text-amber-400 font-mono">0</h3>
+      </div>
+      <div class="bg-card border border-bsc rounded-2xl p-4">
+        <p class="text-xs text-muted font-medium mb-1">Kedaluwarsa</p>
+        <h3 id="statExpired" class="text-xl md:text-2xl font-black text-slate-400 font-mono">0</h3>
+      </div>
+      <div class="bg-card border border-bsc rounded-2xl p-4 col-span-2 md:col-span-1">
+        <p class="text-xs text-muted font-medium mb-1">Mutasi Tak Pas</p>
+        <h3 id="statUnmatched" class="text-xl md:text-2xl font-black text-rose-400 font-mono">0</h3>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="border-b border-bsc flex space-x-2 md:space-x-4">
+      <button onclick="switchTab('orders')" id="tabBtn-orders" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-gold text-gold">
+        Transaksi Live
+      </button>
+      <button onclick="switchTab('unmatched')" id="tabBtn-unmatched" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted hover:text-white">
+        Mutasi CEX / Tak Cocok <span id="badgeUnmatched" class="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30">0</span>
+      </button>
+      <button onclick="switchTab('apps')" id="tabBtn-apps" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted hover:text-white">
+        Kelola Toko & API Keys
+      </button>
+      <button onclick="switchTab('config')" id="tabBtn-config" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted hover:text-white">
+        Konfigurasi BSC & Node
+      </button>
+    </div>
+
+    <!-- TAB 1: Transaksi Live -->
+    <section id="tab-orders" class="space-y-4">
+      <div class="flex flex-wrap justify-between items-center gap-3">
+        <div class="flex space-x-2 text-xs">
+          <button onclick="loadOrders('')" class="status-filter px-3 py-1.5 rounded-lg bg-card border border-bsc text-white hover:border-gold">Semua</button>
+          <button onclick="loadOrders('PENDING')" class="status-filter px-3 py-1.5 rounded-lg bg-card border border-bsc text-amber-400 hover:border-gold">PENDING</button>
+          <button onclick="loadOrders('PAID')" class="status-filter px-3 py-1.5 rounded-lg bg-card border border-bsc text-emerald-400 hover:border-gold">PAID</button>
+          <button onclick="loadOrders('EXPIRED')" class="status-filter px-3 py-1.5 rounded-lg bg-card border border-bsc text-slate-400 hover:border-gold">EXPIRED</button>
+        </div>
+        <button onclick="loadOrders(currentStatusFilter)" class="text-xs text-muted hover:text-gold flex items-center gap-1">
+          🔄 Segarkan
+        </button>
+      </div>
+
+      <div class="bg-card border border-bsc rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-muted">
+            <thead class="bg-[#0b0e11] text-muted uppercase tracking-wider text-[11px] border-b border-bsc">
+              <tr>
+                <th class="p-3.5">Order ID</th>
+                <th class="p-3.5">Ref ID</th>
+                <th class="p-3.5">Total Bayar</th>
+                <th class="p-3.5">Kode Unik</th>
+                <th class="p-3.5">Status</th>
+                <th class="p-3.5">Tx Hash</th>
+                <th class="p-3.5">Pengirim</th>
+                <th class="p-3.5">Waktu</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody" class="divide-y divide-bsc">
+              <tr><td colspan="8" class="p-6 text-center text-muted">Memuat data transaksi...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Mutasi Tak Cocok / Unmatched -->
+    <section id="tab-unmatched" class="space-y-4 hidden">
+      <div class="bg-card border border-bsc rounded-2xl p-4 flex justify-between items-center">
+        <div>
+          <h3 class="text-sm font-bold text-white">Mutasi USDT On-Chain Tak Dikenal</h3>
+          <p class="text-xs text-muted">Daftar transfer USDT masuk yang nominalnya tidak cocok persis (misal akibat potongan fee CEX).</p>
+        </div>
+        <button onclick="loadUnmatched()" class="text-xs text-muted hover:text-gold">🔄 Segarkan</button>
+      </div>
+
+      <div class="bg-card border border-bsc rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-muted">
+            <thead class="bg-[#0b0e11] text-muted uppercase tracking-wider text-[11px] border-b border-bsc">
+              <tr>
+                <th class="p-3.5">Nominal Masuk</th>
+                <th class="p-3.5">Tx Hash</th>
+                <th class="p-3.5">Pengirim</th>
+                <th class="p-3.5">Nomor Blok</th>
+                <th class="p-3.5">Waktu Terdeteksi</th>
+                <th class="p-3.5">Status / Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="unmatchedTableBody" class="divide-y divide-bsc">
+              <tr><td colspan="6" class="p-6 text-center text-muted">Tidak ada mutasi yang belum cocok.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Kelola Toko & API Keys -->
+    <section id="tab-apps" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-card border border-bsc rounded-2xl p-5">
+          <h3 class="text-sm font-bold text-white mb-3">Tambah Toko / Klien Baru</h3>
+          <form onsubmit="handleCreateApp(event)">
+            <div class="mb-3">
+              <label class="block text-xs text-muted mb-1 font-semibold">Nama Toko</label>
+              <input type="text" id="appNameInput" placeholder="Contoh: Toko Kopi Web3" required
+                     class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#f0b90b]">
+            </div>
+            <div class="mb-4">
+              <label class="block text-xs text-muted mb-1 font-semibold">Webhook URL</label>
+              <input type="url" id="appWebhookInput" placeholder="https://toko.com/api/webhook" required
+                     class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#f0b90b]">
+            </div>
+            <button type="submit" class="w-full py-2.5 px-4 bg-gold text-black font-bold text-xs rounded-lg hover:opacity-90 transition">
+              + Daftarkan Toko
+            </button>
+          </form>
+        </div>
+
+        <div class="lg:col-span-2 bg-card border border-bsc rounded-2xl p-5">
+          <h3 class="text-sm font-bold text-white mb-3">Daftar Toko Terdaftar (Sinkron Live & Sandbox)</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-muted">
+              <thead class="bg-[#0b0e11] text-muted uppercase text-[11px] border-b border-bsc">
+                <tr>
+                  <th class="p-3">Nama Toko</th>
+                  <th class="p-3">X-API-Key</th>
+                  <th class="p-3">Webhook URL</th>
+                  <th class="p-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="appsTableBody" class="divide-y divide-bsc">
+                <tr><td colspan="4" class="p-4 text-center">Memuat daftar toko...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Konfigurasi BSC & Node -->
+    <section id="tab-config" class="space-y-6 hidden">
+      <div class="max-w-2xl bg-card border border-bsc rounded-2xl p-6 space-y-5">
+        <div>
+          <h3 class="text-base font-bold text-white">Pengaturan Dompet & Multi-RPC BSC</h3>
+          <p class="text-xs text-muted">Perubahan langsung berlaku di runtime tanpa perlu restart server.</p>
+        </div>
+
+        <form onsubmit="handleSaveConfig(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs text-muted mb-1 font-semibold">Alamat Dompet Penerima (BEP-20 Watch-Only)</label>
+            <input type="text" id="configWalletInput" required
+                   class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-xs text-white font-mono focus:outline-none focus:border-[#f0b90b]">
+            <p class="text-[11px] text-amber-400/80 mt-1">⚠️ HANYA masukkan Public Address (0x...). JANGAN pernah masukkan Private Key.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs text-muted mb-1 font-semibold">Daftar Node Public RPC BSC (Auto-Failover)</label>
+            <textarea id="configRPCInput" rows="4" required
+                      class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-xs text-white font-mono focus:outline-none focus:border-[#f0b90b]"></textarea>
+            <p class="text-[11px] text-muted mt-1">Pisahkan setiap URL dengan koma.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs text-muted mb-1 font-semibold">Required Block Confirmations</label>
+            <input type="number" id="configConfInput" min="1" max="10" required
+                   class="w-32 bg-[#0b0e11] border border-bsc rounded-lg p-2 text-xs text-white focus:outline-none focus:border-[#f0b90b]">
+            <p class="text-[11px] text-muted mt-1">Default 2 blok (~6 detik) untuk finality anti-reorg.</p>
+          </div>
+
+          <div class="flex items-center space-x-3 pt-3">
+            <button type="submit" class="px-5 py-2.5 bg-gold text-black font-bold text-xs rounded-lg hover:opacity-90">
+              ⚡ Simpan Konfigurasi
+            </button>
+            <button type="button" onclick="testRPCConnection()" id="btnTestRPC"
+                    class="px-4 py-2.5 border border-bsc hover:border-gold text-white text-xs rounded-lg flex items-center gap-1.5">
+              <span>🔍</span> Tes Koneksi RPC
+            </button>
+          </div>
+        </form>
+
+        <div id="testRPCResult" class="hidden p-3.5 rounded-xl border text-xs"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-card border-t border-bsc py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-muted">
+      PaymentG &copy; 2026 — Self-Hosted Non-Custodial USDT BEP-20 Payment Gateway
+    </div>
+  </footer>
+
+  <script>
+    let currentAdminKey = localStorage.getItem('paymentg_admin_key') || '';
+    let currentStatusFilter = '';
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    async function apiFetch(endpoint, options = {}) {
+      options.headers = options.headers || {};
+      if (currentAdminKey) {
+        options.headers['X-Admin-Key'] = currentAdminKey;
+      }
+      if (options.body && typeof options.body === 'object') {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(options.body);
+      }
+
+      const res = await fetch(endpoint, options);
+      if (res.status === 401) {
+        document.getElementById('pinModal').classList.remove('hidden');
+        throw new Error('Unauthorized');
+      }
+      return res.json();
+    }
+
+    async function handlePinLogin(e) {
+      e.preventDefault();
+      const pin = document.getElementById('pinInput').value;
+      const errBox = document.getElementById('pinError');
+      const submitBtn = document.getElementById('pinSubmitBtn');
+
+      errBox.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Memverifikasi PIN...';
+
+      try {
+        const res = await fetch('/api/auth/pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          currentAdminKey = data.data.token;
+          localStorage.setItem('paymentg_admin_key', currentAdminKey);
+          document.getElementById('pinModal').classList.add('hidden');
+          initDashboard();
+        } else {
+          errBox.innerText = data.error || 'PIN salah.';
+          errBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        errBox.innerText = 'Koneksi gagal. Periksa server Anda.';
+        errBox.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Masuk ke Dashboard';
+      }
+    }
+
+    function logoutAdmin() {
+      localStorage.removeItem('paymentg_admin_key');
+      currentAdminKey = '';
+      document.getElementById('pinModal').classList.remove('hidden');
+    }
+
+    function switchTab(tab) {
+      ['orders', 'unmatched', 'apps', 'config'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        const btn = document.getElementById(`tabBtn-${t}`);
+        btn.classList.remove('border-gold', 'text-gold');
+        btn.classList.add('border-transparent', 'text-muted');
+      });
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tabBtn-${tab}`);
+      activeBtn.classList.remove('border-transparent', 'text-muted');
+      activeBtn.classList.add('border-gold', 'text-gold');
+
+      if (tab === 'orders') loadOrders(currentStatusFilter);
+      if (tab === 'unmatched') loadUnmatched();
+      if (tab === 'apps') loadApps();
+      if (tab === 'config') loadConfig();
+    }
+
+    async function loadStats() {
+      try {
+        const res = await apiFetch('/api/stats');
+        if (res.success) {
+          const d = res.data;
+          document.getElementById('statVolume').innerHTML = `${Number(d.total_volume_usdt).toFixed(3)} <span class="text-xs font-normal text-gold">USDT</span>`;
+          document.getElementById('statPaid').innerText = d.total_orders_paid;
+          document.getElementById('statPending').innerText = d.total_orders_pending;
+          document.getElementById('statExpired').innerText = d.total_orders_expired;
+          document.getElementById('statUnmatched').innerText = d.total_unmatched;
+          document.getElementById('badgeUnmatched').innerText = d.total_unmatched;
+          document.getElementById('navBlock').innerText = d.last_scanned_block ? `#${d.last_scanned_block}` : '-';
+          document.getElementById('navRPC').innerText = d.active_rpc || '-';
+        }
+      } catch (e) {}
+    }
+
+    async function loadOrders(status = '') {
+      currentStatusFilter = status;
+      const tbody = document.getElementById('ordersTableBody');
+      try {
+        const res = await apiFetch(`/api/orders${status ? '?status=' + status : ''}`);
+        if (!res.success || !res.data || res.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-muted">Belum ada transaksi ${status ? 'berstatus ' + status : ''}.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = res.data.map(o => {
+          let statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold ';
+          if (o.status === 'PAID') statusBadge += 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">PAID</span>';
+          else if (o.status === 'PENDING') statusBadge += 'bg-amber-500/20 text-amber-400 border border-amber-500/30">PENDING</span>';
+          else if (o.status === 'EXPIRED') statusBadge += 'bg-slate-500/20 text-slate-400 border border-slate-500/30">EXPIRED</span>';
+          else statusBadge += 'bg-red-500/20 text-red-400 border border-red-500/30">' + escapeHtml(o.status) + '</span>';
+
+          const txHashLink = o.tx_hash
+            ? `<a href="https://bscscan.com/tx/${escapeHtml(o.tx_hash)}" target="_blank" class="text-gold font-mono hover:underline">${escapeHtml(o.tx_hash.slice(0, 8))}...${escapeHtml(o.tx_hash.slice(-6))}</a>`
+            : '<span class="text-muted">-</span>';
+
+          const fromAddrLink = o.from_address
+            ? `<a href="https://bscscan.com/address/${escapeHtml(o.from_address)}" target="_blank" class="text-muted font-mono hover:text-white hover:underline">${escapeHtml(o.from_address.slice(0, 6))}...${escapeHtml(o.from_address.slice(-4))}</a>`
+            : '<span class="text-muted">-</span>';
+
+          const timeStr = new Date(o.created_at).toLocaleString('id-ID');
+
+          return `
+            <tr class="bg-card-hover transition">
+              <td class="p-3.5 font-mono text-white font-medium">${escapeHtml(o.id)}</td>
+              <td class="p-3.5 font-mono text-muted">${escapeHtml(o.reference_id)}</td>
+              <td class="p-3.5 font-mono font-bold text-white">${escapeHtml(o.total_amount_str)} <span class="text-[10px] text-gold font-normal">USDT</span></td>
+              <td class="p-3.5 font-mono text-amber-400">+${escapeHtml(o.unique_code)}</td>
+              <td class="p-3.5">${statusBadge}</td>
+              <td class="p-3.5">${txHashLink}</td>
+              <td class="p-3.5">${fromAddrLink}</td>
+              <td class="p-3.5 text-muted">${timeStr}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {}
+    }
+
+    async function loadUnmatched() {
+      const tbody = document.getElementById('unmatchedTableBody');
+      try {
+        const res = await apiFetch('/api/unmatched');
+        if (!res.success || !res.data || res.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-muted">Tidak ada mutasi USDT yang belum cocok.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = res.data.map(u => {
+          const txLink = `<a href="https://bscscan.com/tx/${escapeHtml(u.tx_hash)}" target="_blank" class="text-gold font-mono hover:underline">${escapeHtml(u.tx_hash.slice(0, 10))}...${escapeHtml(u.tx_hash.slice(-8))}</a>`;
+          const fromLink = `<a href="https://bscscan.com/address/${escapeHtml(u.from_address)}" target="_blank" class="text-muted font-mono hover:text-white">${escapeHtml(u.from_address.slice(0, 8))}...${escapeHtml(u.from_address.slice(-6))}</a>`;
+          const timeStr = new Date(u.tx_time).toLocaleString('id-ID');
+
+          let actionCol = '';
+          if (u.resolved_order_id) {
+            actionCol = `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Dipasangkan ke ${escapeHtml(u.resolved_order_id)}</span>`;
+          } else {
+            actionCol = `<button onclick="openResolveModal('${escapeHtml(u.tx_id)}')" class="px-3 py-1 rounded bg-gold text-black font-bold text-xs hover:opacity-90">✅ Pasangkan ke Order</button>`;
+          }
+
+          return `
+            <tr class="bg-card-hover transition">
+              <td class="p-3.5 font-mono font-bold text-white text-sm">${escapeHtml(u.amount_str)} <span class="text-xs text-gold">USDT</span></td>
+              <td class="p-3.5">${txLink}</td>
+              <td class="p-3.5">${fromLink}</td>
+              <td class="p-3.5 font-mono text-muted">#${escapeHtml(u.block_number)}</td>
+              <td class="p-3.5 text-muted">${timeStr}</td>
+              <td class="p-3.5">${actionCol}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {}
+    }
+
+    function openResolveModal(txID) {
+      document.getElementById('resolveTxID').value = txID;
+      document.getElementById('resolveOrderID').value = '';
+      document.getElementById('resolveModal').classList.remove('hidden');
+    }
+
+    function closeResolveModal() {
+      document.getElementById('resolveModal').classList.add('hidden');
+    }
+
+    async function submitResolve(e) {
+      e.preventDefault();
+      const tx_id = document.getElementById('resolveTxID').value;
+      const order_id = document.getElementById('resolveOrderID').value.trim();
+
+      try {
+        const res = await apiFetch('/api/unmatched/resolve', {
+          method: 'POST',
+          body: { tx_id, order_id }
+        });
+        if (res.success) {
+          alert('Mutasi berhasil dipasangkan dan pesanan ' + order_id + ' telah dilunaskan!');
+          closeResolveModal();
+          loadUnmatched();
+          loadStats();
+        } else {
+          alert('Gagal: ' + (res.error || 'Terjadi kesalahan'));
+        }
+      } catch (err) {
+        alert('Gagal memasangkan mutasi.');
+      }
+    }
+
+    async function loadApps() {
+      const tbody = document.getElementById('appsTableBody');
+      try {
+        const res = await apiFetch('/api/apps');
+        if (!res.success || !res.data || res.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-muted">Belum ada toko yang terdaftar.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = res.data.map(a => `
+          <tr class="bg-card-hover">
+            <td class="p-3 text-white font-medium">${escapeHtml(a.name)}<br><span class="text-[10px] text-muted font-mono">${escapeHtml(a.id)}</span></td>
+            <td class="p-3 font-mono text-gold flex items-center gap-2">
+              <span>${escapeHtml(a.api_key.slice(0, 10))}...${escapeHtml(a.api_key.slice(-6))}</span>
+              <button onclick="copyToClipboard('${escapeHtml(a.api_key)}')" class="text-xs text-muted hover:text-white" title="Salin API Key">📋</button>
+            </td>
+            <td class="p-3 text-muted truncate max-w-xs font-mono text-[11px]">${escapeHtml(a.webhook_url)}</td>
+            <td class="p-3 text-right">
+              <button onclick="deleteApp('${escapeHtml(a.id)}')" class="text-xs text-red-400 hover:text-red-300">Hapus</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {}
+    }
+
+    async function handleCreateApp(e) {
+      e.preventDefault();
+      const name = document.getElementById('appNameInput').value.trim();
+      const webhook_url = document.getElementById('appWebhookInput').value.trim();
+
+      try {
+        const res = await apiFetch('/api/apps', {
+          method: 'POST',
+          body: { name, webhook_url }
+        });
+        if (res.success) {
+          document.getElementById('appNameInput').value = '';
+          document.getElementById('appWebhookInput').value = '';
+          loadApps();
+        } else {
+          alert('Gagal: ' + res.error);
+        }
+      } catch (err) {
+        alert('Gagal menambahkan toko.');
+      }
+    }
+
+    async function deleteApp(appID) {
+      if (!confirm('Yakin ingin menghapus toko ini?')) return;
+      try {
+        const res = await apiFetch(`/api/apps/${appID}`, { method: 'DELETE' });
+        if (res.success) loadApps();
+      } catch (e) {}
+    }
+
+    async function loadConfig() {
+      try {
+        const res = await apiFetch('/api/config/bsc');
+        if (res.success) {
+          const d = res.data;
+          document.getElementById('configWalletInput').value = d.receiver_wallet || '';
+          document.getElementById('configRPCInput').value = (d.rpc_urls || []).join(',\n');
+          document.getElementById('configConfInput').value = d.required_confirmations || 2;
+        }
+      } catch (e) {}
+    }
+
+    async function handleSaveConfig(e) {
+      e.preventDefault();
+      const receiver_wallet = document.getElementById('configWalletInput').value.trim();
+      const rpcRaw = document.getElementById('configRPCInput').value;
+      const rpc_urls = rpcRaw.split(',').map(s => s.trim()).filter(Boolean);
+      const required_confirmations = parseInt(document.getElementById('configConfInput').value, 10);
+
+      try {
+        const res = await apiFetch('/api/config/bsc', {
+          method: 'PUT',
+          body: { receiver_wallet, rpc_urls, required_confirmations }
+        });
+        if (res.success) {
+          alert('Konfigurasi runtime BSC berhasil disimpan!');
+          loadStats();
+        } else {
+          alert('Gagal: ' + res.error);
+        }
+      } catch (err) {
+        alert('Gagal menyimpan konfigurasi.');
+      }
+    }
+
+    async function testRPCConnection() {
+      const btn = document.getElementById('btnTestRPC');
+      const resBox = document.getElementById('testRPCResult');
+      btn.disabled = true;
+      btn.innerText = 'Menguji RPC...';
+      resBox.classList.add('hidden');
+
+      try {
+        const res = await apiFetch('/api/config/bsc/test', { method: 'POST' });
+        resBox.classList.remove('hidden');
+        if (res.success) {
+          resBox.className = 'p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-xs';
+          resBox.innerHTML = `
+            <strong>✅ Koneksi RPC Berhasil!</strong><br>
+            Node Aktif: <code class="text-white">${escapeHtml(res.data.active_rpc)}</code><br>
+            Nomor Blok Terkini: <code class="text-white">#${res.data.latest_block}</code><br>
+            Latensi: <code class="text-white">${res.data.latency_ms} ms</code>
+          `;
+        } else {
+          resBox.className = 'p-3.5 rounded-xl border border-red-500/30 bg-red-950/40 text-red-300 text-xs';
+          resBox.innerHTML = `<strong>❌ Gagal Terhubung:</strong> ${escapeHtml(res.error)}`;
+        }
+      } catch (err) {
+        resBox.classList.remove('hidden');
+        resBox.className = 'p-3.5 rounded-xl border border-red-500/30 bg-red-950/40 text-red-300 text-xs';
+        resBox.innerText = 'Koneksi gagal saat menguji RPC.';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔍</span> Tes Koneksi RPC';
+      }
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Tersalin ke clipboard!');
+      });
+    }
+
+    function initDashboard() {
+      loadStats();
+      loadOrders();
+      setInterval(loadStats, 10000);
+    }
+
+    // Auto-check PIN session saat load awal
+    if (currentAdminKey) {
+      document.getElementById('pinModal').classList.add('hidden');
+      initDashboard();
+    }
+  </script>
+</body>
+</html>
