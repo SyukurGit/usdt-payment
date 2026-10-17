@@ -15,12 +15,21 @@ echo "=========================================================="
 
 cd "$APP_DIR"
 
-echo "==> 1. Menjaga integritas data lokal (skip-worktree SQLite)..."
-git update-index --skip-worktree data/payment.db data/payment.db-shm data/payment.db-wal data/sandbox/payment.db data/sandbox/payment.db-shm data/sandbox/payment.db-wal 2>/dev/null || true
+echo "==> 1. Mengamankan backup data SQLite produksi..."
+BACKUP_DIR="$APP_DIR/data/backup_auto_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$BACKUP_DIR"
+cp -a "$APP_DIR/data/payment.db"* "$APP_DIR/data/sandbox/payment.db"* "$BACKUP_DIR"/ 2>/dev/null || true
 
 echo "==> 2. Menarik pembaruan kode terbaru dari Git remote..."
+git config pull.rebase false
+git update-index --no-skip-worktree data/payment.db data/payment.db-shm data/payment.db-wal data/sandbox/payment.db data/sandbox/payment.db-shm data/sandbox/payment.db-wal 2>/dev/null || true
+git checkout HEAD -- data/ 2>/dev/null || true
 git fetch origin main
-git pull origin main
+git merge origin/main --no-edit || git pull --no-rebase origin main
+
+echo "==> 2b. Memastikan integritas database produksi lokal..."
+cp -a "$BACKUP_DIR"/* "$APP_DIR/data/" 2>/dev/null || true
+git update-index --skip-worktree data/payment.db data/payment.db-shm data/payment.db-wal data/sandbox/payment.db data/sandbox/payment.db-shm data/sandbox/payment.db-wal 2>/dev/null || true
 
 echo "==> 3. Memverifikasi file environment (.env)..."
 if [ ! -f .env ]; then
