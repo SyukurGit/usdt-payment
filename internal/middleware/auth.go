@@ -53,12 +53,19 @@ func ValidateAdminPIN(inputPin string) (bool, string, int) {
 func RequireAdminKey() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := strings.TrimSpace(c.GetHeader("X-Admin-Key"))
+		if key == "" {
+			authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
+			if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+				key = strings.TrimSpace(authHeader[7:])
+			}
+		}
+
 		expectedKey := config.AppConfig.AdminKey
 
 		if key == "" || subtle.ConstantTimeCompare([]byte(key), []byte(expectedKey)) != 1 {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
-				"error":   "Unauthorized: X-Admin-Key tidak valid atau belum diisi.",
+				"error":   "Unauthorized: X-Admin-Key atau Bearer Token tidak valid atau belum diisi.",
 			})
 			return
 		}
@@ -66,13 +73,37 @@ func RequireAdminKey() gin.HandlerFunc {
 	}
 }
 
-func RequireAPIKey(db *sql.DB) gin.HandlerFunc {
+func RequireAPIKey(db *sql.DB, isSandbox bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		apiKey := strings.TrimSpace(c.GetHeader("X-API-Key"))
 		if apiKey == "" {
+			authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
+			if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+				apiKey = strings.TrimSpace(authHeader[7:])
+			}
+		}
+
+		if apiKey == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
-				"error":   "Unauthorized: Header X-API-Key wajib disertakan.",
+				"error":   "Unauthorized: Header X-API-Key atau Bearer Token wajib disertakan.",
+			})
+			return
+		}
+
+		// Enforce Cross-Environment Protection
+		if !isSandbox && strings.HasPrefix(apiKey, "ak_test_") {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error":   "Unauthorized: Kunci Sandbox (ak_test_...) tidak dapat digunakan pada endpoint Live. Gunakan kunci ak_live_...",
+			})
+			return
+		}
+
+		if isSandbox && strings.HasPrefix(apiKey, "ak_live_") {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error":   "Unauthorized: Kunci Live (ak_live_...) tidak dapat digunakan pada endpoint Sandbox. Gunakan kunci ak_test_...",
 			})
 			return
 		}
@@ -83,7 +114,7 @@ func RequireAPIKey(db *sql.DB) gin.HandlerFunc {
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
-				"error":   "Unauthorized: X-API-Key tidak valid.",
+				"error":   "Unauthorized: API Key tidak valid.",
 			})
 			return
 		}

@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PaymentG — Sandbox Simulator (USDT BEP-20)</title>
+  <title>USDT BEP-20 — Sandbox Simulator</title>
+  <!-- Crypto Favicon (Tether USDT SVG Vector) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='16' fill='%2326A17B'/><path fill='%23FFF' d='M17.922 17.383c-.05.035-1.446.97-3.922.97-2.013 0-3.564-.764-3.957-.96V14.6h3.957v-2.39H7.136v2.39h3.947v2.793c-2.49.99-4.323 2.51-4.323 4.297 0 2.057 2.457 3.774 5.67 4.14v5.17h3.58v-5.17c3.21-.366 5.66-2.083 5.66-4.14 0-1.787-1.83-3.307-4.32-4.297v-2.793h3.95v-2.39h-6.86v2.39h3.96v2.783h.002z'/></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background-color: #061a14; color: #ecfdf5; }
-    .bg-card { background-color: #0b2920; }
-    .bg-card-hover:hover { background-color: #123d30; }
+    body { background-color: #071510; color: #ecfdf5; }
+    .bg-card { background-color: #0d231b; }
+    .bg-card-hover:hover { background-color: #133328; }
     .border-emerald { border-color: #164e3f; }
     .text-emerald { color: #10b981; }
     .bg-emerald { background-color: #10b981; }
@@ -18,8 +20,8 @@
 </head>
 <body class="min-h-screen flex flex-col font-sans">
 
-  <!-- Top Sandbox Banner -->
-  <div class="bg-gradient-to-r from-emerald-900/90 to-teal-950/90 border-b border-emerald-500/30 py-2 px-4 text-center text-xs font-semibold text-emerald-300 flex items-center justify-center gap-2">
+  <!-- Top Mode Alert Banner -->
+  <div class="bg-gradient-to-r from-emerald-950/80 via-teal-950/80 to-emerald-950/80 border-b border-emerald-500/30 py-2 px-4 text-center text-xs font-semibold text-emerald-300 flex items-center justify-center gap-2">
     <span>🧪</span>
     <span>MODE SIMULATOR SANDBOX TERISOLASI — Tidak ada USDT asli yang dipindahkan. Gunakan untuk integrasi & pengujian toko.</span>
   </div>
@@ -28,22 +30,24 @@
   <header class="bg-card border-b border-emerald sticky top-0 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
       <div class="flex items-center space-x-3">
-        <div class="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald font-black">TEST</div>
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shadow-inner">
+          <svg class="w-6 h-6" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#26A17B"/><path fill="#FFF" d="M17.922 17.383c-.05.035-1.446.97-3.922.97-2.013 0-3.564-.764-3.957-.96V14.6h3.957v-2.39H7.136v2.39h3.947v2.793c-2.49.99-4.323 2.51-4.323 4.297 0 2.057 2.457 3.774 5.67 4.14v5.17h3.58v-5.17c3.21-.366 5.66-2.083 5.66-4.14 0-1.787-1.83-3.307-4.32-4.297v-2.793h3.95v-2.39h-6.86v2.39h3.96v2.783h.002z"/></svg>
+        </div>
         <div>
           <div class="flex items-center space-x-2">
-            <h1 class="text-lg font-bold text-white tracking-wide">PaymentG Sandbox</h1>
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold">Simulator 1-Klik</span>
+            <h1 class="text-lg font-bold text-white tracking-wide">USDT Gateway</h1>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold">SANDBOX SIMULATOR</span>
           </div>
-          <p class="text-[11px] text-muted">Uji Checkout & Webhook Toko Tanpa Saldo</p>
+          <p class="text-[11px] text-muted">Simulasi Transaksi & Pengujian Toko Terisolasi</p>
         </div>
       </div>
 
       <div class="flex items-center space-x-3 text-xs">
-        <button onclick="loadAll()" class="border border-emerald hover:border-emerald-400 text-muted hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+        <button onclick="loadAll()" class="border border-emerald hover:border-emerald-400 text-muted hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
           🔄 Segarkan
         </button>
-        <a href="/dashboard/" target="_blank" class="bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 font-semibold px-3 py-1.5 rounded-lg transition">
-          ⚡ Buka Dashboard Live
+        <a href="/dashboard/" target="_blank" class="bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+          <span>⚡</span> Buka Live Dashboard
         </a>
       </div>
     </div>
@@ -101,14 +105,17 @@
 
       <!-- Demo Credentials & Integration Guide -->
       <div class="lg:col-span-2 bg-card border border-emerald rounded-2xl p-5 space-y-3">
-        <h3 class="text-sm font-bold text-white flex items-center gap-2">
-          <span class="text-emerald">🔑</span> Kredensial Toko Demo Sandbox
-        </h3>
-        <p class="text-xs text-muted">Gunakan API Key ini untuk menguji endpoint Sandbox dari backend toko atau cURL Anda:</p>
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="text-emerald">🔑</span> Kredensial Toko Demo Sandbox
+          </h3>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Terisolasi</span>
+        </div>
+        <p class="text-xs text-muted">Kunci ini ber-prefix <code class="text-emerald-300 font-mono">ak_test_</code> khusus untuk pengujian dan tidak dapat digunakan pada jalur Live:</p>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
           <div class="bg-[#061a14] border border-emerald p-3 rounded-xl">
-            <span class="text-[10px] uppercase text-muted block mb-1">X-API-Key</span>
+            <span class="text-[10px] uppercase text-muted block mb-1">X-API-Key (Sandbox)</span>
             <div class="flex justify-between items-center text-emerald-300">
               <span id="credApiKey" class="truncate">Memuat...</span>
               <button onclick="copyText('credApiKey')" class="text-xs text-muted hover:text-white ml-2" title="Salin">📋</button>
@@ -130,13 +137,28 @@
       </div>
     </div>
 
-    <!-- Orders Table -->
-    <div class="space-y-4">
+    <!-- Navigation Tabs -->
+    <div class="border-b border-emerald flex space-x-2 md:space-x-4">
+      <button onclick="switchSandboxTab('orders')" id="sandTabBtn-orders" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-emerald text-emerald">
+        Daftar Pesanan Sandbox
+      </button>
+      <button onclick="switchSandboxTab('webhookLog')" id="sandTabBtn-webhookLog" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted hover:text-white">
+        Demo Webhook Receiver
+      </button>
+    </div>
+
+    <!-- TAB 1: Orders Table (With 1-Click Pay Action) -->
+    <section id="sandTab-orders" class="space-y-4">
       <div class="flex justify-between items-center">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <span>📋</span> Daftar Pesanan Sandbox
-        </h3>
-        <span class="text-xs text-muted">Klik tombol "⚡ Simulasikan Bayar" untuk memicu status PAID & menembakkan Webhook</span>
+        <div>
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <span>📋</span> Transaksi Sandbox
+          </h3>
+          <p class="text-xs text-muted">Klik tombol <strong>"⚡ 1-Klik Bayar"</strong> untuk mengubah status menjadi PAID dan menembakkan Webhook instan ke toko Anda.</p>
+        </div>
+        <button onclick="loadOrders()" class="text-xs text-muted hover:text-emerald flex items-center gap-1">
+          🔄 Segarkan
+        </button>
       </div>
 
       <div class="bg-card border border-emerald rounded-2xl overflow-hidden shadow-sm">
@@ -160,13 +182,34 @@
           </table>
         </div>
       </div>
-    </div>
+    </section>
+
+    <!-- TAB 2: Demo Webhook Log -->
+    <section id="sandTab-webhookLog" class="space-y-4 hidden">
+      <div class="bg-card border border-emerald rounded-2xl p-5 space-y-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <span>🔔</span> Status Demo Webhook Receiver
+        </h3>
+        <p class="text-xs text-muted">
+          Endpoint demo webhook lokal berjalan di: <code class="text-emerald-300 font-mono">/api/sandbox/demo-webhook</code>.
+          Ketika tombol "1-Klik Bayar" ditekan, payload notifikasi pembayaran lunas beserta HMAC-SHA256 signature akan dikirimkan ke endpoint ini.
+        </p>
+        <div class="bg-[#061a14] border border-emerald p-4 rounded-xl text-xs font-mono space-y-2">
+          <div class="text-emerald-400 font-bold">// Format Header Webhook:</div>
+          <div class="text-muted">X-Webhook-Event: payment.success</div>
+          <div class="text-muted">X-Webhook-Timestamp: &lt;unix_timestamp&gt;</div>
+          <div class="text-muted">X-Webhook-Signature: &lt;hmac_sha256_hash_menggunakan_api_key&gt;</div>
+          <div class="text-emerald-400 font-bold mt-2">// Format Payload JSON:</div>
+          <div class="text-muted">{ "event": "payment.success", "is_sandbox": true, "order_id": "ord_...", "status": "PAID" }</div>
+        </div>
+      </div>
+    </section>
 
   </main>
 
   <footer class="bg-card border-t border-emerald py-4 mt-auto">
     <div class="max-w-7xl mx-auto px-4 text-center text-xs text-muted">
-      PaymentG Sandbox &copy; 2026 — Lingkungan Uji Mandiri Web3 Payment Gateway
+      USDT BEP-20 &copy; 2026 — Sandbox Simulator & Test Environment
     </div>
   </footer>
 
@@ -181,16 +224,28 @@
         .replace(/'/g, '&#039;');
     }
 
+    function switchSandboxTab(tab) {
+      ['orders', 'webhookLog'].forEach(t => {
+        document.getElementById(`sandTab-${t}`).classList.add('hidden');
+        const btn = document.getElementById(`sandTabBtn-${t}`);
+        btn.classList.remove('border-emerald', 'text-emerald');
+        btn.classList.add('border-transparent', 'text-muted');
+      });
+      document.getElementById(`sandTab-${tab}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`sandTabBtn-${tab}`);
+      activeBtn.classList.remove('border-transparent', 'text-muted');
+      activeBtn.classList.add('border-emerald', 'text-emerald');
+    }
+
     async function loadStats() {
       try {
         const res = await fetch('/api/sandbox/stats');
         const data = await res.json();
         if (data.success) {
-          const d = data.data;
-          document.getElementById('statVolume').innerHTML = `${Number(d.total_volume_usdt).toFixed(3)} <span class="text-xs font-normal text-emerald">USDT</span>`;
-          document.getElementById('statPaid').innerText = d.total_orders_paid;
-          document.getElementById('statPending').innerText = d.total_orders_pending;
-          document.getElementById('statExpired').innerText = d.total_orders_expired;
+          document.getElementById('statVolume').innerHTML = `${Number(data.data.total_volume_usdt).toFixed(3)} <span class="text-xs font-normal text-emerald">USDT</span>`;
+          document.getElementById('statPaid').innerText = data.data.total_orders_paid;
+          document.getElementById('statPending').innerText = data.data.total_orders_pending;
+          document.getElementById('statExpired').innerText = data.data.total_orders_expired;
         }
       } catch (e) {}
     }
@@ -214,7 +269,7 @@
         const res = await fetch('/api/sandbox/orders');
         const data = await res.json();
         if (!data.success || !data.data || data.data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-muted">Belum ada pesanan di sandbox. Buat satu melalui form di atas!</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-muted">Belum ada transaksi sandbox. Buat tagihan test di atas!</td></tr>`;
           return;
         }
 
@@ -223,36 +278,34 @@
           if (o.status === 'PAID') statusBadge += 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">PAID</span>';
           else if (o.status === 'PENDING') statusBadge += 'bg-amber-500/20 text-amber-300 border border-amber-500/30">PENDING</span>';
           else if (o.status === 'EXPIRED') statusBadge += 'bg-slate-500/20 text-slate-400 border border-slate-500/30">EXPIRED</span>';
-          else statusBadge += 'bg-red-500/20 text-red-400 border border-red-500/30">' + escapeHtml(o.status) + '</span>';
+          else statusBadge += 'bg-red-500/20 text-red-300 border border-red-500/30">' + escapeHtml(o.status) + '</span>';
 
-          const txHashDisplay = o.tx_hash
-            ? `<span class="font-mono text-emerald-300 text-[11px]">${escapeHtml(o.tx_hash.slice(0, 10))}...${escapeHtml(o.tx_hash.slice(-6))}</span>`
+          const txHash = o.tx_hash
+            ? `<span class="font-mono text-emerald-300 text-[11px]" title="${escapeHtml(o.tx_hash)}">${escapeHtml(o.tx_hash.slice(0, 10))}...${escapeHtml(o.tx_hash.slice(-6))}</span>`
             : '<span class="text-muted">-</span>';
 
           const timeStr = new Date(o.created_at).toLocaleString('id-ID');
 
           let actionCol = '';
           if (o.status === 'PENDING') {
-            actionCol = `
-              <button onclick="simulatePay('${escapeHtml(o.id)}')" 
-                      class="px-3 py-1.5 rounded-lg bg-emerald text-black font-bold text-xs hover:opacity-90 flex items-center gap-1 mx-auto shadow transition">
-                <span>⚡</span> Simulasikan Bayar (1-Klik)
-              </button>
-            `;
+            actionCol = `<button onclick="simulatePay('${escapeHtml(o.id)}')" class="px-3 py-1.5 rounded-lg bg-emerald text-black font-extrabold text-xs hover:opacity-90 transition shadow flex items-center gap-1.5 mx-auto">⚡ 1-Klik Bayar</button>`;
           } else if (o.status === 'PAID') {
-            actionCol = `<span class="text-[11px] text-emerald-400 font-semibold">✓ Webhook Terkirim</span>`;
+            actionCol = `<span class="text-emerald-400 font-semibold text-xs flex items-center justify-center gap-1">✓ Lunas (Simulasi)</span>`;
           } else {
-            actionCol = `<span class="text-[11px] text-muted">-</span>`;
+            actionCol = `<span class="text-slate-500 text-xs">Kedaluwarsa</span>`;
           }
 
           return `
             <tr class="bg-card-hover transition">
-              <td class="p-3.5 font-mono text-white font-medium">${escapeHtml(o.id)}</td>
+              <td class="p-3.5 font-mono text-white font-medium flex items-center gap-1.5">
+                <span>${escapeHtml(o.id)}</span>
+                <button onclick="copyRaw('${escapeHtml(o.id)}')" class="text-muted hover:text-white" title="Salin">📋</button>
+              </td>
               <td class="p-3.5 font-mono text-muted">${escapeHtml(o.reference_id)}</td>
               <td class="p-3.5 font-mono font-bold text-white">${escapeHtml(o.total_amount_str)} <span class="text-[10px] text-emerald font-normal">USDT</span></td>
               <td class="p-3.5 font-mono text-amber-300">+${escapeHtml(o.unique_code)}</td>
               <td class="p-3.5">${statusBadge}</td>
-              <td class="p-3.5">${txHashDisplay}</td>
+              <td class="p-3.5">${txHash}</td>
               <td class="p-3.5 text-muted">${timeStr}</td>
               <td class="p-3.5 text-center">${actionCol}</td>
             </tr>
@@ -268,7 +321,7 @@
       const btn = document.getElementById('btnCreateDemo');
 
       btn.disabled = true;
-      btn.innerText = 'Membuat...';
+      btn.innerText = 'Membuat Order...';
 
       try {
         const res = await fetch('/api/sandbox/orders/create-demo', {
@@ -282,10 +335,10 @@
           loadOrders();
           loadStats();
         } else {
-          alert('Gagal: ' + data.error);
+          alert('Gagal: ' + (data.error || 'Terjadi kesalahan'));
         }
       } catch (err) {
-        alert('Gagal membuat tagihan demo.');
+        alert('Gagal membuat tagihan test.');
       } finally {
         btn.disabled = false;
         btn.innerText = '+ Buat Tagihan Test';
@@ -293,25 +346,31 @@
     }
 
     async function simulatePay(orderID) {
+      if (!confirm(`Simulasikan transfer on-chain untuk order ${orderID}? Status akan langsung diubah jadi PAID dan Webhook akan ditembakkan.`)) return;
+
       try {
         const res = await fetch(`/api/sandbox/orders/${orderID}/pay`, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-          alert('Simulasi Sukses! ' + data.message);
+          alert(`Simulasi transfer berhasil!\nTx Hash: ${data.data.tx_hash}\nWebhook telah ditembakkan ke toko.`);
           loadOrders();
           loadStats();
         } else {
-          alert('Gagal: ' + data.error);
+          alert('Gagal: ' + (data.error || 'Terjadi kesalahan'));
         }
       } catch (err) {
-        alert('Gagal memicu simulasi lunas.');
+        alert('Gagal memicu simulasi bayar.');
       }
     }
 
-    function copyText(elemId) {
-      const text = document.getElementById(elemId).innerText;
+    function copyText(elemID) {
+      const text = document.getElementById(elemID).innerText;
+      copyRaw(text);
+    }
+
+    function copyRaw(text) {
       navigator.clipboard.writeText(text).then(() => {
-        alert('Tersalin ke clipboard!');
+        alert('Tersalin ke clipboard: ' + text);
       });
     }
 
@@ -322,7 +381,7 @@
     }
 
     loadAll();
-    setInterval(loadAll, 10000);
+    setInterval(loadStats, 10000);
   </script>
 </body>
 </html>

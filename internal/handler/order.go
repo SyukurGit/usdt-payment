@@ -132,8 +132,24 @@ func (h *OrderHandler) CreateOrder(c *gin.Context, isSandbox bool) {
 	})
 }
 
+func isValidOrderID(id string) bool {
+	if len(id) < 4 || len(id) > 64 {
+		return false
+	}
+	for _, ch := range id {
+		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_') {
+			return false
+		}
+	}
+	return true
+}
+
 func (h *OrderHandler) GetOrder(c *gin.Context, isSandbox bool) {
 	orderID := c.Param("id")
+	if !isValidOrderID(orderID) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Format order_id tidak valid."})
+		return
+	}
 	db := h.getDB(isSandbox)
 
 	ord, err := h.orderSvc.GetOrderByID(db, orderID)
@@ -192,6 +208,10 @@ func (h *OrderHandler) GetOrder(c *gin.Context, isSandbox bool) {
 
 func (h *OrderHandler) ServeQR(c *gin.Context, isSandbox bool) {
 	orderID := c.Param("id")
+	if !isValidOrderID(orderID) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Format order_id tidak valid."})
+		return
+	}
 	db := h.getDB(isSandbox)
 
 	var walletAddress string
@@ -214,6 +234,10 @@ func (h *OrderHandler) ServeQR(c *gin.Context, isSandbox bool) {
 
 func (h *OrderHandler) CheckOrder(c *gin.Context, isSandbox bool) {
 	orderID := c.Param("id")
+	if !isValidOrderID(orderID) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Format order_id tidak valid."})
+		return
+	}
 	db := h.getDB(isSandbox)
 
 	ord, err := h.orderSvc.GetOrderByID(db, orderID)
@@ -225,8 +249,11 @@ func (h *OrderHandler) CheckOrder(c *gin.Context, isSandbox bool) {
 	scannedNow := false
 	nextCheckInSec := 0
 
-	// Jika Live dan status masih PENDING, picu smart rate-gate scan
-	if !isSandbox && ord.Status == "PENDING" {
+	// Jika Live dan status masih PENDING atau baru EXPIRED dalam 15 menit, picu on-demand rate-gate scan
+	nowMs := time.Now().UnixMilli()
+	isRecentlyExpired := ord.Status == "EXPIRED" && (nowMs-ord.ExpiresAt < 15*60*1000)
+
+	if !isSandbox && (ord.Status == "PENDING" || isRecentlyExpired) {
 		scanned, remaining := h.pollerSvc.TriggerOnDemandCheck(c.Request.Context())
 		scannedNow = scanned
 		nextCheckInSec = remaining
@@ -261,6 +288,10 @@ func (h *OrderHandler) CheckOrder(c *gin.Context, isSandbox bool) {
 
 func (h *OrderHandler) CancelOrder(c *gin.Context, isSandbox bool) {
 	orderID := c.Param("id")
+	if !isValidOrderID(orderID) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Format order_id tidak valid."})
+		return
+	}
 	db := h.getDB(isSandbox)
 
 	appVal, exists := c.Get("app")

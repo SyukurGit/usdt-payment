@@ -113,8 +113,8 @@ func (p *PollerService) RunScanCycle(ctx context.Context) error {
 	}
 
 	var fromBlock uint64
-	if lastScanned == 0 || safeBlock > lastScanned+1200 {
-		// Smart Block Jump jika baru bangun atau tertinggal > 1200 blok (~1 jam)
+	if lastScanned == 0 || safeBlock > lastScanned+1200 || lastScanned > safeBlock {
+		// Smart Block Jump jika baru bangun, tertinggal > 1200 blok (~1 jam), atau desync (lastScanned > safeBlock)
 		if safeBlock > 20 {
 			fromBlock = safeBlock - 20
 		} else {
@@ -174,7 +174,7 @@ func (p *PollerService) processLogItem(item RPCLogItem) {
 	if len(cleanFrom) >= 40 {
 		cleanFrom = cleanFrom[len(cleanFrom)-40:]
 	}
-	fromAddress := "0x" + cleanFrom
+	fromAddress := "0x" + strings.ToLower(cleanFrom)
 
 	// Ekstrak blockNumber dan logIndex
 	blockNum, _ := strconv.ParseUint(strings.TrimPrefix(item.BlockNumber, "0x"), 16, 64)
@@ -214,37 +214,43 @@ func (p *PollerService) processLogItem(item RPCLogItem) {
 	amountStr := formatWeiToUSDT(rawWei)
 
 	// Auto-Match hanya jika txMilli > 0 dan remainder == 0 (tanpa sub-milli dust)
+	// Mendukung order PENDING atau EXPIRED dalam jendela 15 menit terakhir (tail-polling CEX)
 	if isExactMilli && txMilli > 0 {
+		nowMs := time.Now().UnixMilli()
+		tailMs := nowMs - (15 * 60 * 1000)
+
 		var matchedOrderID string
 		err := p.db.QueryRow(`
 			SELECT id FROM orders 
 			WHERE currency = 'USDT' 
 			  AND total_amount_milli = ? 
-			  AND status = 'PENDING'
+			  AND (status = 'PENDING' OR (status = 'EXPIRED' AND expires_at >= ?))
 			ORDER BY created_at ASC LIMIT 1
-		`, txMilli).Scan(&matchedOrderID)
+		`, txMilli, tailMs).Scan(&matchedOrderID)
 
 		if err == nil && matchedOrderID != "" {
-			nowMs := time.Now().UnixMilli()
-			_, updateErr := p.db.Exec(`
+			res, updateErr := p.db.Exec(`
 				UPDATE orders 
 				SET status = 'PAID', tx_id = ?, tx_hash = ?, from_address = ?, block_number = ?, paid_at = ?
-				WHERE id = ?
+				WHERE id = ? AND status != 'PAID'
 			`, txID, txHash, fromAddress, blockNum, nowMs, matchedOrderID)
 
 			if updateErr == nil {
-				log.Printf("[Auto-Match Success] Order %s lunas! Tx: %s (%s USDT)", matchedOrderID, txHash, amountStr)
-				go func(ordID string) {
-					_ = p.webhookSvc.DispatchOrderWebhook(p.db, ordID, false)
-				}(matchedOrderID)
-				return
+				rowsAff, _ := res.RowsAffected()
+				if rowsAff > 0 {
+					log.Printf("[Auto-Match Success] Order %s lunas! Tx: %s (%s USDT)", matchedOrderID, txHash, amountStr)
+					go func(ordID string) {
+						_ = p.webhookSvc.DispatchOrderWebhook(p.db, ordID, false)
+					}(matchedOrderID)
+					return
+				}
 			}
 		}
 	}
 
 	// Masuk ke unmatched_transactions jika tidak match atau isExactMilli == false
 	_, insErr := p.db.Exec(`
-		INSERT INTO unmatched_transactions (
+		INSERT OR IGNORE INTO unmatched_transactions (
 			tx_id, tx_hash, from_address, currency, amount_str, amount_milli, raw_wei, block_number, tx_time, resolved_order_id
 		) VALUES (?, ?, ?, 'USDT', ?, ?, ?, ?, ?, '')
 	`, txID, txHash, fromAddress, amountStr, txMilli, rawWei.String(), blockNum, time.Now().UnixMilli())
@@ -287,8 +293,8 @@ func formatWeiToUSDT(wei *big.Int) string {
 	if fracPart == "" {
 		return intPart
 	}
-	if len(fracPart) > 6 {
-		fracPart = fracPart[:6]
+	if len(fracPart) > 8 {
+		fracPart = fracPart[:8]
 	}
 	return intPart + "." + fracPart
 }

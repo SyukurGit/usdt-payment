@@ -33,15 +33,37 @@ func NewSandboxHandler(sandboxDB *sql.DB, orderSvc *service.OrderService, qrServ
 
 func (h *SandboxHandler) GetCredentials(c *gin.Context) {
 	var app database.App
-	err := h.sandboxDB.QueryRow("SELECT id, name, api_key, webhook_url, created_at FROM apps ORDER BY created_at ASC LIMIT 1").
-		Scan(&app.ID, &app.Name, &app.APIKey, &app.WebhookURL, &app.CreatedAt)
+	err := h.sandboxDB.QueryRow(`
+		SELECT id, name, api_key, webhook_url, created_at 
+		FROM apps 
+		WHERE api_key LIKE 'ak_test_%' AND (name LIKE '%Demo%' OR id = 'app_test_demo')
+		ORDER BY created_at ASC LIMIT 1
+	`).Scan(&app.ID, &app.Name, &app.APIKey, &app.WebhookURL, &app.CreatedAt)
 
 	if err != nil {
-		// Buat demo store jika belum ada
-		newApp, createErr := database.CreateAppDual("Demo Sandbox Store", "http://localhost:3400/api/sandbox/demo-webhook")
-		if createErr == nil {
-			app = *newApp
+		// Fallback cari app sandbox apapun yang ber-prefix ak_test_
+		err = h.sandboxDB.QueryRow(`
+			SELECT id, name, api_key, webhook_url, created_at 
+			FROM apps 
+			WHERE api_key LIKE 'ak_test_%'
+			ORDER BY created_at ASC LIMIT 1
+		`).Scan(&app.ID, &app.Name, &app.APIKey, &app.WebhookURL, &app.CreatedAt)
+	}
+
+	if err != nil {
+		testKey := "ak_test_" + database.RandomHex(16)
+		now := time.Now().Format("2006-01-02 15:04:05")
+		app = database.App{
+			ID:         "app_test_demo",
+			Name:       "Demo Store (Sandbox)",
+			APIKey:     testKey,
+			WebhookURL: "http://localhost:3900/api/sandbox/demo-webhook",
+			CreatedAt:  now,
 		}
+		_, _ = h.sandboxDB.Exec(`
+			INSERT OR REPLACE INTO apps (id, name, api_key, webhook_url, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, app.ID, app.Name, app.APIKey, app.WebhookURL, app.CreatedAt)
 	}
 
 	host := c.Request.Host
@@ -160,13 +182,28 @@ func (h *SandboxHandler) CreateDemoOrder(c *gin.Context) {
 		req.ReferenceID = fmt.Sprintf("DEMO-%d", time.Now().Unix()%100000)
 	}
 
-	// Cari app pertama
+	// Cari app sandbox demo
 	var app database.App
-	err := h.sandboxDB.QueryRow("SELECT id, name, api_key, webhook_url, created_at FROM apps ORDER BY created_at ASC LIMIT 1").
-		Scan(&app.ID, &app.Name, &app.APIKey, &app.WebhookURL, &app.CreatedAt)
+	err := h.sandboxDB.QueryRow(`
+		SELECT id, name, api_key, webhook_url, created_at 
+		FROM apps 
+		WHERE api_key LIKE 'ak_test_%'
+		ORDER BY created_at ASC LIMIT 1
+	`).Scan(&app.ID, &app.Name, &app.APIKey, &app.WebhookURL, &app.CreatedAt)
 	if err != nil {
-		newApp, _ := database.CreateAppDual("Demo Sandbox Store", "http://localhost:3400/api/sandbox/demo-webhook")
-		app = *newApp
+		testKey := "ak_test_" + database.RandomHex(16)
+		now := time.Now().Format("2006-01-02 15:04:05")
+		app = database.App{
+			ID:         "app_test_demo",
+			Name:       "Demo Store (Sandbox)",
+			APIKey:     testKey,
+			WebhookURL: "http://localhost:3900/api/sandbox/demo-webhook",
+			CreatedAt:  now,
+		}
+		_, _ = h.sandboxDB.Exec(`
+			INSERT OR REPLACE INTO apps (id, name, api_key, webhook_url, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, app.ID, app.Name, app.APIKey, app.WebhookURL, app.CreatedAt)
 	}
 
 	ord, err := h.orderSvc.CreateOrder(h.sandboxDB, service.CreateOrderParams{

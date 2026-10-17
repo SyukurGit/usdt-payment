@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PaymentG — USDT BEP-20 Live Dashboard</title>
+  <title>USDT BEP-20 — On-Chain Gateway (Live)</title>
+  <!-- Crypto Favicon (Tether USDT SVG Vector) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='16' fill='%2326A17B'/><path fill='%23FFF' d='M17.922 17.383c-.05.035-1.446.97-3.922.97-2.013 0-3.564-.764-3.957-.96V14.6h3.957v-2.39H7.136v2.39h3.947v2.793c-2.49.99-4.323 2.51-4.323 4.297 0 2.057 2.457 3.774 5.67 4.14v5.17h3.58v-5.17c3.21-.366 5.66-2.083 5.66-4.14 0-1.787-1.83-3.307-4.32-4.297v-2.793h3.95v-2.39h-6.86v2.39h3.96v2.783h.002z'/></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #0b0e11; color: #eaecef; }
@@ -18,13 +20,21 @@
 </head>
 <body class="min-h-screen flex flex-col font-sans">
 
+  <!-- Top Mode Alert Banner -->
+  <div class="bg-gradient-to-r from-amber-950/80 via-yellow-950/80 to-amber-950/80 border-b border-gold/30 py-2 px-4 text-center text-xs font-semibold text-gold flex items-center justify-center gap-2">
+    <span>⚡</span>
+    <span>MODE PRODUKSI LIVE ON-CHAIN — Memantau transfer USDT BEP-20 langsung di BNB Smart Chain (Non-Custodial).</span>
+  </div>
+
   <!-- PIN Modal -->
   <div id="pinModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-card border border-bsc rounded-2xl w-full max-w-md p-6 shadow-2xl">
       <div class="flex items-center space-x-3 mb-6">
-        <div class="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold text-xl">⚡</div>
+        <div class="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center">
+          <svg class="w-6 h-6" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#26A17B"/><path fill="#FFF" d="M17.922 17.383c-.05.035-1.446.97-3.922.97-2.013 0-3.564-.764-3.957-.96V14.6h3.957v-2.39H7.136v2.39h3.947v2.793c-2.49.99-4.323 2.51-4.323 4.297 0 2.057 2.457 3.774 5.67 4.14v5.17h3.58v-5.17c3.21-.366 5.66-2.083 5.66-4.14 0-1.787-1.83-3.307-4.32-4.297v-2.793h3.95v-2.39h-6.86v2.39h3.96v2.783h.002z"/></svg>
+        </div>
         <div>
-          <h2 class="text-xl font-bold text-white">PaymentG Security Guard</h2>
+          <h2 class="text-xl font-bold text-white">USDT Gateway Security</h2>
           <p class="text-xs text-muted">Masukkan Admin PIN untuk mengakses dashboard live</p>
         </div>
       </div>
@@ -59,11 +69,18 @@
           <label class="block text-xs text-muted mb-1">Tx ID / Mutasi</label>
           <input type="text" id="resolveTxID" readonly class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-xs text-muted font-mono">
         </div>
+        <div class="mb-3">
+          <label class="block text-xs text-muted mb-1 font-semibold text-white">Pilih Pesanan yang Belum Lunas</label>
+          <select id="resolveOrderSelect" onchange="document.getElementById('resolveOrderID').value = this.value"
+                  class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#f0b90b]">
+            <option value="">-- Memuat daftar pesanan... --</option>
+          </select>
+        </div>
         <div class="mb-4">
           <label class="block text-xs text-muted mb-1 font-semibold text-white">Target Order ID</label>
           <input type="text" id="resolveOrderID" placeholder="ord_xxxxxxxxxxxx" required
                  class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-sm text-white font-mono focus:outline-none focus:border-[#f0b90b]">
-          <p class="text-[11px] text-muted mt-1">Order harus berstatus PENDING atau EXPIRED (belum PAID).</p>
+          <p class="text-[11px] text-muted mt-1">Pilih dari dropdown di atas atau ketik manual Order ID.</p>
         </div>
         <div class="flex justify-end space-x-3">
           <button type="button" onclick="closeResolveModal()" class="px-4 py-2 rounded-lg border border-bsc text-sm text-muted hover:text-white">Batal</button>
@@ -77,13 +94,15 @@
   <header class="bg-card border-b border-bsc sticky top-0 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
       <div class="flex items-center space-x-3">
-        <div class="w-9 h-9 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-black">BSC</div>
+        <div class="w-10 h-10 rounded-xl bg-[#26A17B]/20 border border-[#26A17B]/40 flex items-center justify-center shadow-inner">
+          <svg class="w-6 h-6" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#26A17B"/><path fill="#FFF" d="M17.922 17.383c-.05.035-1.446.97-3.922.97-2.013 0-3.564-.764-3.957-.96V14.6h3.957v-2.39H7.136v2.39h3.947v2.793c-2.49.99-4.323 2.51-4.323 4.297 0 2.057 2.457 3.774 5.67 4.14v5.17h3.58v-5.17c3.21-.366 5.66-2.083 5.66-4.14 0-1.787-1.83-3.307-4.32-4.297v-2.793h3.95v-2.39h-6.86v2.39h3.96v2.783h.002z"/></svg>
+        </div>
         <div>
           <div class="flex items-center space-x-2">
-            <h1 class="text-lg font-bold text-white tracking-wide">PaymentG</h1>
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold border border-gold/40 font-semibold">USDT BEP-20</span>
+            <h1 class="text-lg font-bold text-white tracking-wide">USDT Gateway</h1>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-gold/20 text-gold border border-gold/40 font-semibold">LIVE (BEP-20)</span>
           </div>
-          <p class="text-[11px] text-muted">Watch-Only Non-Custodial Gateway</p>
+          <p class="text-[11px] text-muted">Watch-Only Non-Custodial Gateway (BNB Smart Chain)</p>
         </div>
       </div>
 
@@ -94,11 +113,11 @@
           <span id="navBlock" class="text-white font-mono font-bold">-</span>
         </div>
         <div class="hidden lg:flex items-center space-x-2 bg-[#0b0e11] border border-bsc px-3 py-1.5 rounded-lg">
-          <span class="text-muted">RPC Aktif:</span>
-          <span id="navRPC" class="text-gold font-mono truncate max-w-[200px]">-</span>
+          <span class="text-muted">RPC:</span>
+          <span id="navRPC" class="text-gold font-mono truncate max-w-[180px]">-</span>
         </div>
-        <a href="/sandbox/" target="_blank" class="bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-600/30 font-semibold px-3 py-1.5 rounded-lg transition">
-          🚀 Buka Sandbox
+        <a href="/sandbox/" target="_blank" class="bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30 font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+          <span>🧪</span> Buka Sandbox Simulator
         </a>
         <button onclick="logoutAdmin()" class="border border-bsc hover:border-red-500/50 text-muted hover:text-red-400 px-3 py-1.5 rounded-lg transition">
           Keluar
@@ -129,7 +148,7 @@
         <h3 id="statExpired" class="text-xl md:text-2xl font-black text-slate-400 font-mono">0</h3>
       </div>
       <div class="bg-card border border-bsc rounded-2xl p-4 col-span-2 md:col-span-1">
-        <p class="text-xs text-muted font-medium mb-1">Mutasi Tak Pas</p>
+        <p class="text-xs text-muted font-medium mb-1">Mutasi Tak Cocok</p>
         <h3 id="statUnmatched" class="text-xl md:text-2xl font-black text-rose-400 font-mono">0</h3>
       </div>
     </div>
@@ -153,14 +172,15 @@
     <!-- TAB 1: Transaksi Live -->
     <section id="tab-orders" class="space-y-4">
       <div class="flex flex-wrap justify-between items-center gap-3">
-        <div class="flex space-x-2 text-xs">
-          <button onclick="loadOrders('')" class="status-filter px-3 py-1.5 rounded-lg bg-card border border-bsc text-white hover:border-gold">Semua</button>
-          <button onclick="loadOrders('PENDING')" class="status-filter px-3 py-1.5 rounded-lg bg-card border border-bsc text-amber-400 hover:border-gold">PENDING</button>
-          <button onclick="loadOrders('PAID')" class="status-filter px-3 py-1.5 rounded-lg bg-card border border-bsc text-emerald-400 hover:border-gold">PAID</button>
-          <button onclick="loadOrders('EXPIRED')" class="status-filter px-3 py-1.5 rounded-lg bg-card border border-bsc text-slate-400 hover:border-gold">EXPIRED</button>
+        <div class="flex items-center space-x-2">
+          <span class="text-xs text-muted">Filter:</span>
+          <button onclick="loadOrders('')" class="px-2.5 py-1 rounded-lg text-xs border border-bsc hover:border-gold text-white font-medium">Semua</button>
+          <button onclick="loadOrders('PENDING')" class="px-2.5 py-1 rounded-lg text-xs bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 font-medium">PENDING</button>
+          <button onclick="loadOrders('PAID')" class="px-2.5 py-1 rounded-lg text-xs bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 font-medium">PAID</button>
+          <button onclick="loadOrders('EXPIRED')" class="px-2.5 py-1 rounded-lg text-xs bg-slate-500/10 text-slate-300 border border-slate-500/30 hover:bg-slate-500/20 font-medium">EXPIRED</button>
         </div>
         <button onclick="loadOrders(currentStatusFilter)" class="text-xs text-muted hover:text-gold flex items-center gap-1">
-          🔄 Segarkan
+          🔄 Segarkan Tabel
         </button>
       </div>
 
@@ -174,25 +194,26 @@
                 <th class="p-3.5">Total Bayar</th>
                 <th class="p-3.5">Kode Unik</th>
                 <th class="p-3.5">Status</th>
-                <th class="p-3.5">Tx Hash</th>
+                <th class="p-3.5">Tx Hash (BSC)</th>
                 <th class="p-3.5">Pengirim</th>
                 <th class="p-3.5">Waktu</th>
+                <th class="p-3.5 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody id="ordersTableBody" class="divide-y divide-bsc">
-              <tr><td colspan="8" class="p-6 text-center text-muted">Memuat data transaksi...</td></tr>
+              <tr><td colspan="9" class="p-6 text-center text-muted">Memuat data pesanan...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- TAB 2: Mutasi Tak Cocok / Unmatched -->
+    <!-- TAB 2: Mutasi Tak Cocok / CEX Resolution -->
     <section id="tab-unmatched" class="space-y-4 hidden">
-      <div class="bg-card border border-bsc rounded-2xl p-4 flex justify-between items-center">
+      <div class="flex justify-between items-center">
         <div>
           <h3 class="text-sm font-bold text-white">Mutasi USDT On-Chain Tak Dikenal</h3>
-          <p class="text-xs text-muted">Daftar transfer USDT masuk yang nominalnya tidak cocok persis (misal akibat potongan fee CEX).</p>
+          <p class="text-xs text-muted">Daftar transfer USDT masuk yang nominalnya tidak cocok persis (misal akibat potongan fee penarikan bursa).</p>
         </div>
         <button onclick="loadUnmatched()" class="text-xs text-muted hover:text-gold">🔄 Segarkan</button>
       </div>
@@ -218,42 +239,50 @@
       </div>
     </section>
 
-    <!-- TAB 3: Kelola Toko & API Keys -->
+    <!-- TAB 3: Kelola Toko & API Keys (Terisolasi) -->
     <section id="tab-apps" class="space-y-6 hidden">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="bg-card border border-bsc rounded-2xl p-5">
-          <h3 class="text-sm font-bold text-white mb-3">Tambah Toko / Klien Baru</h3>
+          <h3 class="text-sm font-bold text-white mb-2">Daftarkan Toko / Klien Baru</h3>
+          <p class="text-xs text-muted mb-4">Sistem akan otomatis menghasilkan 2 pasangan API Key unik yang terisolasi 100%: kunci Live (`ak_live_`) dan kunci Sandbox (`ak_test_`).</p>
           <form onsubmit="handleCreateApp(event)">
             <div class="mb-3">
               <label class="block text-xs text-muted mb-1 font-semibold">Nama Toko</label>
               <input type="text" id="appNameInput" placeholder="Contoh: Toko Kopi Web3" required
                      class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#f0b90b]">
             </div>
-            <div class="mb-4">
-              <label class="block text-xs text-muted mb-1 font-semibold">Webhook URL</label>
+            <div class="mb-3">
+              <label class="block text-xs text-muted mb-1 font-semibold">Webhook URL (Live)</label>
               <input type="url" id="appWebhookInput" placeholder="https://toko.com/api/webhook" required
                      class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#f0b90b]">
             </div>
+            <div class="mb-4">
+              <label class="block text-xs text-muted mb-1 font-semibold">Webhook URL Sandbox (Opsional)</label>
+              <input type="url" id="appSandboxWebhookInput" placeholder="Boleh dikosongkan jika sama"
+                     class="w-full bg-[#0b0e11] border border-bsc rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#f0b90b]">
+            </div>
             <button type="submit" class="w-full py-2.5 px-4 bg-gold text-black font-bold text-xs rounded-lg hover:opacity-90 transition">
-              + Daftarkan Toko
+              + Buat Toko & Generate API Keys
             </button>
           </form>
         </div>
 
         <div class="lg:col-span-2 bg-card border border-bsc rounded-2xl p-5">
-          <h3 class="text-sm font-bold text-white mb-3">Daftar Toko Terdaftar (Sinkron Live & Sandbox)</h3>
+          <h3 class="text-sm font-bold text-white mb-1">Daftar Toko & Kredensial Kunci Terpisah</h3>
+          <p class="text-xs text-muted mb-3">Kunci Live hanya berlaku untuk transaksi asli. Kunci Sandbox aman diberikan ke pengembang untuk pengujian.</p>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs text-muted">
               <thead class="bg-[#0b0e11] text-muted uppercase text-[11px] border-b border-bsc">
                 <tr>
                   <th class="p-3">Nama Toko</th>
-                  <th class="p-3">X-API-Key</th>
+                  <th class="p-3">Live API Key (Produksi)</th>
+                  <th class="p-3">Sandbox API Key (Testing)</th>
                   <th class="p-3">Webhook URL</th>
                   <th class="p-3 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody id="appsTableBody" class="divide-y divide-bsc">
-                <tr><td colspan="4" class="p-4 text-center">Memuat daftar toko...</td></tr>
+                <tr><td colspan="5" class="p-4 text-center">Memuat daftar toko...</td></tr>
               </tbody>
             </table>
           </div>
@@ -310,7 +339,7 @@
 
   <footer class="bg-card border-t border-bsc py-4 mt-auto">
     <div class="max-w-7xl mx-auto px-4 text-center text-xs text-muted">
-      PaymentG &copy; 2026 — Self-Hosted Non-Custodial USDT BEP-20 Payment Gateway
+      USDT BEP-20 &copy; 2026 — Self-Hosted Non-Custodial Watch-Only Web3 Gateway
     </div>
   </footer>
 
@@ -429,7 +458,7 @@
       try {
         const res = await apiFetch(`/api/orders${status ? '?status=' + status : ''}`);
         if (!res.success || !res.data || res.data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-muted">Belum ada transaksi ${status ? 'berstatus ' + status : ''}.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-muted">Belum ada transaksi ${status ? 'berstatus ' + status : ''}.</td></tr>`;
           return;
         }
 
@@ -441,7 +470,7 @@
           else statusBadge += 'bg-red-500/20 text-red-400 border border-red-500/30">' + escapeHtml(o.status) + '</span>';
 
           const txHashLink = o.tx_hash
-            ? `<a href="https://bscscan.com/tx/${escapeHtml(o.tx_hash)}" target="_blank" class="text-gold font-mono hover:underline">${escapeHtml(o.tx_hash.slice(0, 8))}...${escapeHtml(o.tx_hash.slice(-6))}</a>`
+            ? `<a href="https://bscscan.com/tx/${escapeHtml(o.tx_hash)}" target="_blank" class="text-gold font-mono hover:underline">${escapeHtml(o.tx_hash.slice(0, 8))}...${escapeHtml(o.tx_hash.slice(-6))} ↗</a>`
             : '<span class="text-muted">-</span>';
 
           const fromAddrLink = o.from_address
@@ -450,9 +479,21 @@
 
           const timeStr = new Date(o.created_at).toLocaleString('id-ID');
 
+          let actionCol = '';
+          if (o.status === 'PENDING') {
+            actionCol = `<button onclick="checkOrderLive('${escapeHtml(o.id)}')" class="px-2.5 py-1 rounded border border-gold/40 hover:border-gold text-gold text-[11px] font-medium">🔍 Cek On-Chain</button>`;
+          } else if (o.status === 'PAID') {
+            actionCol = `<span class="text-emerald-400 text-[11px] font-semibold">✓ Terverifikasi</span>`;
+          } else {
+            actionCol = `<span class="text-muted text-[11px]">-</span>`;
+          }
+
           return `
             <tr class="bg-card-hover transition">
-              <td class="p-3.5 font-mono text-white font-medium">${escapeHtml(o.id)}</td>
+              <td class="p-3.5 font-mono text-white font-medium flex items-center gap-1.5">
+                <span>${escapeHtml(o.id)}</span>
+                <button onclick="copyToClipboard('${escapeHtml(o.id)}')" class="text-muted hover:text-white" title="Salin Order ID">📋</button>
+              </td>
               <td class="p-3.5 font-mono text-muted">${escapeHtml(o.reference_id)}</td>
               <td class="p-3.5 font-mono font-bold text-white">${escapeHtml(o.total_amount_str)} <span class="text-[10px] text-gold font-normal">USDT</span></td>
               <td class="p-3.5 font-mono text-amber-400">+${escapeHtml(o.unique_code)}</td>
@@ -460,10 +501,27 @@
               <td class="p-3.5">${txHashLink}</td>
               <td class="p-3.5">${fromAddrLink}</td>
               <td class="p-3.5 text-muted">${timeStr}</td>
+              <td class="p-3.5 text-center">${actionCol}</td>
             </tr>
           `;
         }).join('');
       } catch (e) {}
+    }
+
+    async function checkOrderLive(orderId) {
+      try {
+        const res = await fetch(`/api/orders/${orderId}/check`, { method: 'POST' });
+        const d = await res.json();
+        if (d.success) {
+          alert(`Status order ${orderId}: ${d.data.status}`);
+          loadOrders(currentStatusFilter);
+          loadStats();
+        } else {
+          alert('Gagal cek order: ' + (d.error || 'Terjadi kesalahan'));
+        }
+      } catch (e) {
+        alert('Gagal menghubungi node BSC.');
+      }
     }
 
     async function loadUnmatched() {
@@ -476,7 +534,7 @@
         }
 
         tbody.innerHTML = res.data.map(u => {
-          const txLink = `<a href="https://bscscan.com/tx/${escapeHtml(u.tx_hash)}" target="_blank" class="text-gold font-mono hover:underline">${escapeHtml(u.tx_hash.slice(0, 10))}...${escapeHtml(u.tx_hash.slice(-8))}</a>`;
+          const txLink = `<a href="https://bscscan.com/tx/${escapeHtml(u.tx_hash)}" target="_blank" class="text-gold font-mono hover:underline">${escapeHtml(u.tx_hash.slice(0, 10))}...${escapeHtml(u.tx_hash.slice(-8))} ↗</a>`;
           const fromLink = `<a href="https://bscscan.com/address/${escapeHtml(u.from_address)}" target="_blank" class="text-muted font-mono hover:text-white">${escapeHtml(u.from_address.slice(0, 8))}...${escapeHtml(u.from_address.slice(-6))}</a>`;
           const timeStr = new Date(u.tx_time).toLocaleString('id-ID');
 
@@ -501,10 +559,27 @@
       } catch (e) {}
     }
 
-    function openResolveModal(txID) {
+    async function openResolveModal(txID) {
       document.getElementById('resolveTxID').value = txID;
       document.getElementById('resolveOrderID').value = '';
+      const sel = document.getElementById('resolveOrderSelect');
+      sel.innerHTML = '<option value="">-- Memuat daftar pesanan... --</option>';
       document.getElementById('resolveModal').classList.remove('hidden');
+
+      try {
+        const res = await apiFetch('/api/orders');
+        if (res.success && res.data) {
+          const candidates = res.data.filter(o => o.status === 'PENDING' || o.status === 'EXPIRED');
+          if (candidates.length === 0) {
+            sel.innerHTML = '<option value="">(Tidak ada pesanan PENDING atau EXPIRED)</option>';
+          } else {
+            sel.innerHTML = '<option value="">-- Pilih Pesanan Target --</option>' +
+              candidates.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.id)} | Ref: ${escapeHtml(c.reference_id)} | ${escapeHtml(c.total_amount_str)} USDT (${escapeHtml(c.status)})</option>`).join('');
+          }
+        }
+      } catch (err) {
+        sel.innerHTML = '<option value="">(Gagal memuat pesanan)</option>';
+      }
     }
 
     function closeResolveModal() {
@@ -539,23 +614,41 @@
       try {
         const res = await apiFetch('/api/apps');
         if (!res.success || !res.data || res.data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-muted">Belum ada toko yang terdaftar.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-muted">Belum ada toko yang terdaftar.</td></tr>`;
           return;
         }
 
-        tbody.innerHTML = res.data.map(a => `
-          <tr class="bg-card-hover">
-            <td class="p-3 text-white font-medium">${escapeHtml(a.name)}<br><span class="text-[10px] text-muted font-mono">${escapeHtml(a.id)}</span></td>
-            <td class="p-3 font-mono text-gold flex items-center gap-2">
-              <span>${escapeHtml(a.api_key.slice(0, 10))}...${escapeHtml(a.api_key.slice(-6))}</span>
-              <button onclick="copyToClipboard('${escapeHtml(a.api_key)}')" class="text-xs text-muted hover:text-white" title="Salin API Key">📋</button>
-            </td>
-            <td class="p-3 text-muted truncate max-w-xs font-mono text-[11px]">${escapeHtml(a.webhook_url)}</td>
-            <td class="p-3 text-right">
-              <button onclick="deleteApp('${escapeHtml(a.id)}')" class="text-xs text-red-400 hover:text-red-300">Hapus</button>
-            </td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = res.data.map(a => {
+          const liveKey = a.live_api_key || a.api_key;
+          const sandKey = a.sandbox_api_key || '-';
+
+          return `
+            <tr class="bg-card-hover">
+              <td class="p-3 text-white font-medium">
+                ${escapeHtml(a.name)}<br>
+                <span class="text-[10px] text-muted font-mono">${escapeHtml(a.id)}</span>
+              </td>
+              <td class="p-3 font-mono">
+                <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-gold/15 text-gold border border-gold/30">
+                  <span class="truncate max-w-[130px]">${escapeHtml(liveKey)}</span>
+                  <button onclick="copyToClipboard('${escapeHtml(liveKey)}')" class="hover:text-white" title="Salin Kunci Live">📋</button>
+                </div>
+              </td>
+              <td class="p-3 font-mono">
+                ${sandKey !== '-' ? `
+                  <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <span class="truncate max-w-[130px]">${escapeHtml(sandKey)}</span>
+                    <button onclick="copyToClipboard('${escapeHtml(sandKey)}')" class="hover:text-white" title="Salin Kunci Sandbox">📋</button>
+                  </div>
+                ` : '<span class="text-muted">-</span>'}
+              </td>
+              <td class="p-3 text-muted truncate max-w-xs font-mono text-[11px]">${escapeHtml(a.webhook_url)}</td>
+              <td class="p-3 text-right">
+                <button onclick="deleteApp('${escapeHtml(a.id)}')" class="text-xs text-red-400 hover:text-red-300">Hapus</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
       } catch (e) {}
     }
 
@@ -563,15 +656,17 @@
       e.preventDefault();
       const name = document.getElementById('appNameInput').value.trim();
       const webhook_url = document.getElementById('appWebhookInput').value.trim();
+      const sandbox_webhook_url = document.getElementById('appSandboxWebhookInput').value.trim();
 
       try {
         const res = await apiFetch('/api/apps', {
           method: 'POST',
-          body: { name, webhook_url }
+          body: { name, webhook_url, sandbox_webhook_url }
         });
         if (res.success) {
           document.getElementById('appNameInput').value = '';
           document.getElementById('appWebhookInput').value = '';
+          document.getElementById('appSandboxWebhookInput').value = '';
           loadApps();
         } else {
           alert('Gagal: ' + res.error);
@@ -582,7 +677,7 @@
     }
 
     async function deleteApp(appID) {
-      if (!confirm('Yakin ingin menghapus toko ini?')) return;
+      if (!confirm('Yakin ingin menghapus toko ini? Pasangan kuncinya di Sandbox juga akan dihapus.')) return;
       try {
         const res = await apiFetch(`/api/apps/${appID}`, { method: 'DELETE' });
         if (res.success) loadApps();

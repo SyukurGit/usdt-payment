@@ -23,7 +23,7 @@ import (
 
 func main() {
 	log.Println("==================================================")
-	log.Println("  PaymentG: USDT BEP-20 (BSC On-Chain Edition)    ")
+	log.Println("  USDT BEP-20 (BNB Smart Chain Gateway)          ")
 	log.Println("  100% Non-Custodial Watch-Only Web3 Gateway     ")
 	log.Println("==================================================")
 
@@ -135,8 +135,8 @@ func main() {
 		adminProtected.POST("/config/bsc/test", adminH.TestRPC)
 	}
 
-	// Merchant Protected Endpoints Live (X-API-Key)
-	liveMerchant := api.Group("", middleware.RequireAPIKey(liveDB))
+	// Merchant Protected Endpoints Live (X-API-Key: ak_live_...)
+	liveMerchant := api.Group("", middleware.RequireAPIKey(liveDB, false))
 	{
 		liveMerchant.POST("/orders", func(c *gin.Context) {
 			orderH.CreateOrder(c, false)
@@ -149,8 +149,8 @@ func main() {
 		})
 	}
 
-	// Merchant Protected Endpoints Sandbox (X-API-Key)
-	sandboxMerchant := api.Group("/sandbox", middleware.RequireAPIKey(sandboxDB))
+	// Merchant Protected Endpoints Sandbox (X-API-Key: ak_test_...)
+	sandboxMerchant := api.Group("/sandbox", middleware.RequireAPIKey(sandboxDB, true))
 	{
 		sandboxMerchant.POST("/orders", func(c *gin.Context) {
 			orderH.CreateOrder(c, true)
@@ -197,7 +197,7 @@ func main() {
 		log.Printf("[Shutdown Error] HTTP server shutdown error: %v", err)
 	}
 
-	log.Println("[Shutdown] PaymentG selesai dihentikan.")
+	log.Println("[Shutdown] USDT Gateway selesai dihentikan.")
 }
 
 func initSystemConfigRuntime(db *sql.DB, cfg *config.Config) {

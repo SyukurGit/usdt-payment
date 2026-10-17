@@ -47,6 +47,9 @@ func (s *OrderService) CreateOrder(db *sql.DB, params CreateOrderParams) (*datab
 		params.WalletAddress = config.AppConfig.GetReceiverWallet()
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	// Idempotensi: Cek apakah ada order dengan app_id + reference_id yang masih PENDING
 	var existing database.Order
 	var txID sql.NullString
@@ -75,9 +78,6 @@ func (s *OrderService) CreateOrder(db *sql.DB, params CreateOrderParams) (*datab
 		return &existing, nil
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	origMilli := int64(math.Round(params.Amount * 1000.0))
 
 	// Alokasi kode unik adaptif
@@ -88,7 +88,7 @@ func (s *OrderService) CreateOrder(db *sql.DB, params CreateOrderParams) (*datab
 
 	totalMilli := origMilli + int64(uniqueCode)
 	totalAmount := float64(totalMilli) / 1000.0
-	totalAmountStr := fmt.Sprintf("%.3f", totalAmount)
+	totalAmountStr := fmt.Sprintf("%d.%03d", totalMilli/1000, totalMilli%1000)
 
 	orderID := "ord_" + database.RandomAlphaNumeric(12)
 	nowMs := time.Now().UnixMilli()
