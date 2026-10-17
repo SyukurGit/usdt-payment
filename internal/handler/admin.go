@@ -238,11 +238,36 @@ func (h *AdminHandler) GetApps(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	apps := []database.App{}
+	type AppItem struct {
+		ID            string `json:"id"`
+		Name          string `json:"name"`
+		APIKey        string `json:"api_key"`
+		LiveAPIKey    string `json:"live_api_key"`
+		SandboxAPIKey string `json:"sandbox_api_key"`
+		WebhookURL    string `json:"webhook_url"`
+		CreatedAt     string `json:"created_at"`
+	}
+
+	apps := []AppItem{}
 	for rows.Next() {
 		var a database.App
 		if err := rows.Scan(&a.ID, &a.Name, &a.APIKey, &a.WebhookURL, &a.CreatedAt); err == nil {
-			apps = append(apps, a)
+			var sandKey string
+			if database.SandboxDB != nil {
+				_ = database.SandboxDB.QueryRow(
+					"SELECT api_key FROM apps WHERE name = ? OR name = ? ORDER BY created_at DESC LIMIT 1",
+					a.Name, a.Name+" (Sandbox)",
+				).Scan(&sandKey)
+			}
+			apps = append(apps, AppItem{
+				ID:            a.ID,
+				Name:          a.Name,
+				APIKey:        a.APIKey,
+				LiveAPIKey:    a.APIKey,
+				SandboxAPIKey: sandKey,
+				WebhookURL:    a.WebhookURL,
+				CreatedAt:     a.CreatedAt,
+			})
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": apps})
@@ -250,26 +275,38 @@ func (h *AdminHandler) GetApps(c *gin.Context) {
 
 func (h *AdminHandler) CreateApp(c *gin.Context) {
 	var req struct {
-		Name       string `json:"name" binding:"required"`
-		WebhookURL string `json:"webhook_url" binding:"required"`
+		Name              string `json:"name" binding:"required"`
+		WebhookURL        string `json:"webhook_url" binding:"required"`
+		SandboxWebhookURL string `json:"sandbox_webhook_url"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "name dan webhook_url wajib diisi."})
 		return
 	}
 
-	app, err := database.CreateAppDual(req.Name, req.WebhookURL)
+	liveApp, sandboxApp, err := database.CreateAppPair(req.Name, req.WebhookURL, req.SandboxWebhookURL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"success": true, "data": app})
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"data": gin.H{
+			"id":              liveApp.ID,
+			"name":            liveApp.Name,
+			"api_key":         liveApp.APIKey,
+			"live_api_key":    liveApp.APIKey,
+			"sandbox_api_key": sandboxApp.APIKey,
+			"webhook_url":     liveApp.WebhookURL,
+			"created_at":      liveApp.CreatedAt,
+		},
+	})
 }
 
 func (h *AdminHandler) DeleteApp(c *gin.Context) {
 	appID := c.Param("id")
-	if err := database.DeleteAppDual(appID); err != nil {
+	if err := database.DeleteAppPair(appID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -310,6 +347,7 @@ func (h *AdminHandler) UpdateBSCConfig(c *gin.Context) {
 		}
 		config.AppConfig.SetReceiverWallet(w)
 		_ = database.SetSystemConfig(h.db, "receiver_wallet_address", w)
+		_ = database.SetSystemConfig(database.SandboxDB, "receiver_wallet_address", w)
 	}
 
 	if len(req.RPCURLs) > 0 {
@@ -323,12 +361,14 @@ func (h *AdminHandler) UpdateBSCConfig(c *gin.Context) {
 		if len(validURLs) > 0 {
 			config.AppConfig.SetRPCURLs(validURLs)
 			_ = database.SetSystemConfig(h.db, "bsc_rpc_urls", strings.Join(validURLs, ","))
+			_ = database.SetSystemConfig(database.SandboxDB, "bsc_rpc_urls", strings.Join(validURLs, ","))
 		}
 	}
 
 	if req.RequiredConfirmations != nil && *req.RequiredConfirmations >= 1 {
 		config.AppConfig.SetRequiredConfirmations(*req.RequiredConfirmations)
 		_ = database.SetSystemConfig(h.db, "required_confirmations", strconv.FormatUint(*req.RequiredConfirmations, 10))
+		_ = database.SetSystemConfig(database.SandboxDB, "required_confirmations", strconv.FormatUint(*req.RequiredConfirmations, 10))
 	}
 
 	c.JSON(http.StatusOK, gin.H{

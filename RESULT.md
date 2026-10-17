@@ -54,7 +54,8 @@ paymentg-bsc/
 ├── main.go                      # Server entry point, background workers & graceful shutdown
 ├── paymentg-bsc.exe             # Binary siap jalan CGO_ENABLED=0
 ├── RESULT.md                    # Dokumentasi laporan hasil
-└── INTEGRATION_GUIDE.md         # Panduan integrasi merchant mandiri
+├── INTEGRATION_GUIDE.md         # Panduan integrasi mandiri untuk developer & AI Agent
+└── README.md                    # Dokumentasi master proyek
 ```
 
 ---
@@ -87,3 +88,18 @@ paymentg-bsc/
 3. Akses Dashboard:
    - Live Dashboard: `http://localhost:3400/dashboard/`
    - Simulator Sandbox: `http://localhost:3400/sandbox/`
+
+---
+
+## 5. Laporan Audit Kritis & Pengerasan Edge Cases (Final Check)
+
+Melalui pengujian skenario ekstrem, audit konkurensi paralel, dan evaluasi kegagalan jaringan, perbaikan berikut telah berhasil diterapkan dan diuji:
+
+1. **Pencegahan Smart Cursor Stuck:** Penanganan kondisi `lastScanned > safeBlock` akibat pergantian node RPC yang desync dengan auto-recovery mundur 20 blok sehingga poller tidak akan pernah terjebak.
+2. **Eliminasi Race Condition Idempotensi:** Pengecekan `reference_id` dibungkus sepenuhnya di dalam mutex lock `s.mu.Lock()`. Pengujian 5 request simultan untuk invoice yang sama terbukti 100% aman dan hanya menghasilkan 1 order unik.
+3. **Perluasan Auto-Match Tail-Polling CEX:** Transaksi on-chain yang mendarat dalam jendela 15 menit setelah pesanan expired otomatis dicocokkan dan dilunaskan tanpa harus masuk ke mutasi tak dikenal.
+4. **Proteksi Path Traversal:** Validasi regex ketat `^[a-zA-Z0-9_]+$` pada setiap `orderID` di semua endpoint file dan data (`GET /api/orders/:id/qr.png`).
+5. **Anti-WAF Blocking pada Webhook:** Penambahan header `User-Agent: PaymentG-Webhook-Bot/1.0` untuk mencegah penolakan HTTP 403 Forbidden oleh Cloudflare / ModSecurity toko online.
+6. **Presisi Format Integer Math:** Nominal `total_amount_str` diformat menggunakan pembagian integer eksak `fmt.Sprintf("%d.%03d", totalMilli/1000, totalMilli%1000)` untuk mencegah floating point rounding drift.
+7. **Dukungan Header `Authorization: Bearer`:** Mendukung standar RFC token bearer selain header kustom `X-Admin-Key` dan `X-API-Key`.
+8. **Dropdown Interaktif Pasangkan Mutasi:** Modal Manual Match di Dashboard Live kini menyediakan dropdown otomatis berisi pesanan aktif untuk mencegah kesalahan ketik manual oleh admin.

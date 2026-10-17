@@ -136,6 +136,7 @@ func (s *WebhookService) DispatchOrderWebhook(db *sql.DB, orderID string, isSand
 		return fmt.Errorf("failed to create http request: %w", err)
 	}
 
+	req.Header.Set("User-Agent", "PaymentG-Webhook-Bot/1.0")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Webhook-Event", "payment.success")
 	req.Header.Set("X-Webhook-Timestamp", fmt.Sprintf("%d", nowUnix))
@@ -183,6 +184,9 @@ func (s *WebhookService) DispatchOrderWebhook(db *sql.DB, orderID string, isSand
 }
 
 func (s *WebhookService) RetryPendingWebhooks(db *sql.DB, isSandbox bool) {
+	if db == nil {
+		return
+	}
 	nowMs := time.Now().UnixMilli()
 	rows, err := db.Query(`
 		SELECT id FROM orders 

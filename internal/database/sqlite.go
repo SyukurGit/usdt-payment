@@ -106,11 +106,8 @@ func InitDatabases() (*sql.DB, *sql.DB, error) {
 	LiveDB = liveConn
 	SandboxDB = sandboxConn
 
-	if err := SyncAppsBetweenDBs(); err != nil {
-		log.Printf("[DB Sync Warning] %v", err)
-	}
-
-	ensureDefaultDemoApp()
+	migrateLegacyKeys(LiveDB, SandboxDB)
+	ensureDefaultDemoApps()
 
 	return LiveDB, SandboxDB, nil
 }
@@ -219,85 +216,157 @@ func SetSystemConfig(db *sql.DB, key, value string) error {
 	return err
 }
 
-func CreateAppDual(name, webhookURL string) (*App, error) {
-	appID := "app_" + RandomAlphaNumeric(12)
-	apiKey := "ak_" + RandomHex(16) // 32 hex chars
+// CreateAppPair membuat 2 entitas toko terpisah:
+// 1. Toko Live dengan API Key unik ber-prefix ak_live_ disimpan ke LiveDB.
+// 2. Toko Sandbox dengan API Key unik ber-prefix ak_test_ disimpan ke SandboxDB.
+// Keduanya memiliki rahasia kunci yang 100% berbeda untuk menjamin isolasi total.
+func CreateAppPair(name, liveWebhookURL, sandboxWebhookURL string) (*App, *App, error) {
+	if sandboxWebhookURL == "" {
+		sandboxWebhookURL = liveWebhookURL
+	}
+
 	createdAt := time.Now().Format("2006-01-02 15:04:05")
 
-	app := &App{
-		ID:         appID,
+	liveApp := &App{
+		ID:         "app_live_" + RandomAlphaNumeric(10),
 		Name:       name,
-		APIKey:     apiKey,
-		WebhookURL: webhookURL,
+		APIKey:     "ak_live_" + RandomHex(16),
+		WebhookURL: liveWebhookURL,
+		CreatedAt:  createdAt,
+	}
+
+	sandboxApp := &App{
+		ID:         "app_test_" + RandomAlphaNumeric(10),
+		Name:       name + " (Sandbox)",
+		APIKey:     "ak_test_" + RandomHex(16),
+		WebhookURL: sandboxWebhookURL,
 		CreatedAt:  createdAt,
 	}
 
 	query := `INSERT INTO apps (id, name, api_key, webhook_url, created_at) VALUES (?, ?, ?, ?, ?)`
 
-	if _, err := LiveDB.Exec(query, app.ID, app.Name, app.APIKey, app.WebhookURL, app.CreatedAt); err != nil {
-		return nil, fmt.Errorf("failed to insert app to LiveDB: %w", err)
+	if _, err := LiveDB.Exec(query, liveApp.ID, liveApp.Name, liveApp.APIKey, liveApp.WebhookURL, liveApp.CreatedAt); err != nil {
+		return nil, nil, fmt.Errorf("gagal membuat app di LiveDB: %w", err)
 	}
 
-	if _, err := SandboxDB.Exec(query, app.ID, app.Name, app.APIKey, app.WebhookURL, app.CreatedAt); err != nil {
-		return nil, fmt.Errorf("failed to insert app to SandboxDB: %w", err)
+	if _, err := SandboxDB.Exec(query, sandboxApp.ID, sandboxApp.Name, sandboxApp.APIKey, sandboxApp.WebhookURL, sandboxApp.CreatedAt); err != nil {
+		// Rollback dari LiveDB jika sandbox gagal
+		_, _ = LiveDB.Exec("DELETE FROM apps WHERE id = ?", liveApp.ID)
+		return nil, nil, fmt.Errorf("gagal membuat app di SandboxDB: %w", err)
 	}
 
-	return app, nil
+	return liveApp, sandboxApp, nil
 }
 
-func DeleteAppDual(appID string) error {
-	query := `DELETE FROM apps WHERE id = ?`
-	if _, err := LiveDB.Exec(query, appID); err != nil {
-		return fmt.Errorf("failed to delete from LiveDB: %w", err)
+func DeleteAppPair(appID string) error {
+	var appName string
+	_ = LiveDB.QueryRow("SELECT name FROM apps WHERE id = ?", appID).Scan(&appName)
+
+	// Hapus dari LiveDB
+	if _, err := LiveDB.Exec("DELETE FROM apps WHERE id = ?", appID); err != nil {
+		return fmt.Errorf("gagal menghapus dari LiveDB: %w", err)
 	}
-	if _, err := SandboxDB.Exec(query, appID); err != nil {
-		return fmt.Errorf("failed to delete from SandboxDB: %w", err)
+
+	// Hapus juga pasangan di SandboxDB jika cocok dengan appID atau nama
+	if appName != "" {
+		_, _ = SandboxDB.Exec("DELETE FROM apps WHERE id = ? OR name = ? OR name = ?", appID, appName, appName+" (Sandbox)")
+	} else {
+		_, _ = SandboxDB.Exec("DELETE FROM apps WHERE id = ?", appID)
 	}
 	return nil
 }
 
-func SyncAppsBetweenDBs() error {
-	if LiveDB == nil || SandboxDB == nil {
-		return nil
+func migrateLegacyKeys(liveDB, sandboxDB *sql.DB) {
+	if liveDB == nil || sandboxDB == nil {
+		return
 	}
 
-	rowsLive, err := LiveDB.Query("SELECT id, name, api_key, webhook_url, created_at FROM apps")
+	type appRow struct {
+		id, key, name string
+	}
+
+	// 1. Migrasikan kunci di LiveDB agar selalu memiliki prefix ak_live_
+	var liveApps []appRow
+	rowsLive, err := liveDB.Query("SELECT id, api_key, name FROM apps")
 	if err == nil {
-		defer rowsLive.Close()
 		for rowsLive.Next() {
-			var a App
-			if err := rowsLive.Scan(&a.ID, &a.Name, &a.APIKey, &a.WebhookURL, &a.CreatedAt); err == nil {
-				_, _ = SandboxDB.Exec(`
-					INSERT OR IGNORE INTO apps (id, name, api_key, webhook_url, created_at)
-					VALUES (?, ?, ?, ?, ?)
-				`, a.ID, a.Name, a.APIKey, a.WebhookURL, a.CreatedAt)
+			var r appRow
+			if err := rowsLive.Scan(&r.id, &r.key, &r.name); err == nil {
+				liveApps = append(liveApps, r)
 			}
+		}
+		rowsLive.Close()
+	}
+
+	for _, a := range liveApps {
+		newName := a.name
+		if strings.Contains(a.name, "Demo Store") {
+			newName = "Demo Store (Live)"
+		}
+		if !strings.HasPrefix(a.key, "ak_live_") {
+			newKey := "ak_live_" + RandomHex(16)
+			_, _ = liveDB.Exec("UPDATE apps SET api_key = ?, name = ? WHERE id = ?", newKey, newName, a.id)
+			log.Printf("[DB Migration] Diperbarui Live App %s ke kunci ak_live_", a.id)
+		} else if newName != a.name {
+			_, _ = liveDB.Exec("UPDATE apps SET name = ? WHERE id = ?", newName, a.id)
 		}
 	}
 
-	rowsSandbox, err := SandboxDB.Query("SELECT id, name, api_key, webhook_url, created_at FROM apps")
+	// 2. Migrasikan kunci di SandboxDB agar selalu memiliki prefix ak_test_
+	var sandboxApps []appRow
+	rowsSandbox, err := sandboxDB.Query("SELECT id, api_key, name FROM apps")
 	if err == nil {
-		defer rowsSandbox.Close()
 		for rowsSandbox.Next() {
-			var a App
-			if err := rowsSandbox.Scan(&a.ID, &a.Name, &a.APIKey, &a.WebhookURL, &a.CreatedAt); err == nil {
-				_, _ = LiveDB.Exec(`
-					INSERT OR IGNORE INTO apps (id, name, api_key, webhook_url, created_at)
-					VALUES (?, ?, ?, ?, ?)
-				`, a.ID, a.Name, a.APIKey, a.WebhookURL, a.CreatedAt)
+			var r appRow
+			if err := rowsSandbox.Scan(&r.id, &r.key, &r.name); err == nil {
+				sandboxApps = append(sandboxApps, r)
 			}
+		}
+		rowsSandbox.Close()
+	}
+
+	for _, a := range sandboxApps {
+		newName := a.name
+		if strings.Contains(a.name, "Demo Store") {
+			newName = "Demo Store (Sandbox)"
+		}
+		if !strings.HasPrefix(a.key, "ak_test_") {
+			newKey := "ak_test_" + RandomHex(16)
+			_, _ = sandboxDB.Exec("UPDATE apps SET api_key = ?, name = ? WHERE id = ?", newKey, newName, a.id)
+			log.Printf("[DB Migration] Diperbarui Sandbox App %s ke kunci ak_test_", a.id)
+		} else if newName != a.name {
+			_, _ = sandboxDB.Exec("UPDATE apps SET name = ? WHERE id = ?", newName, a.id)
 		}
 	}
 
-	return nil
+	// 3. Update port webhook lokal jika sebelumnya tercatat 3400
+	_, _ = liveDB.Exec("UPDATE apps SET webhook_url = replace(webhook_url, ':3400', ':3900') WHERE webhook_url LIKE '%:3400%'")
+	_, _ = sandboxDB.Exec("UPDATE apps SET webhook_url = replace(webhook_url, ':3400', ':3900') WHERE webhook_url LIKE '%:3400%'")
 }
 
-func ensureDefaultDemoApp() {
-	var count int
-	_ = LiveDB.QueryRow("SELECT COUNT(*) FROM apps").Scan(&count)
-	if count == 0 {
-		_, _ = CreateAppDual("Demo Store (Sandbox & Live)", "http://localhost:3400/api/sandbox/demo-webhook")
-		log.Println("[Database] Inisialisasi default Demo Store berhasil dibuat.")
+func ensureDefaultDemoApps() {
+	var liveCount int
+	_ = LiveDB.QueryRow("SELECT COUNT(*) FROM apps").Scan(&liveCount)
+	if liveCount == 0 {
+		liveKey := "ak_live_" + RandomHex(16)
+		now := time.Now().Format("2006-01-02 15:04:05")
+		_, _ = LiveDB.Exec(`
+			INSERT INTO apps (id, name, api_key, webhook_url, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, "app_live_demo", "Demo Store (Live)", liveKey, "http://localhost:3900/api/sandbox/demo-webhook", now)
+		log.Println("[Database] Inisialisasi default Demo Store (Live) berhasil dibuat.")
+	}
+
+	var sandboxCount int
+	_ = SandboxDB.QueryRow("SELECT COUNT(*) FROM apps").Scan(&sandboxCount)
+	if sandboxCount == 0 {
+		testKey := "ak_test_" + RandomHex(16)
+		now := time.Now().Format("2006-01-02 15:04:05")
+		_, _ = SandboxDB.Exec(`
+			INSERT INTO apps (id, name, api_key, webhook_url, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, "app_test_demo", "Demo Store (Sandbox)", testKey, "http://localhost:3900/api/sandbox/demo-webhook", now)
+		log.Println("[Database] Inisialisasi default Demo Store (Sandbox) berhasil dibuat.")
 	}
 }
 
